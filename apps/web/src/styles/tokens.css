@@ -1,0 +1,300 @@
+/*
+ * Design tokens for the QA Seniority Checker.
+ *
+ * Generated from docs/design-system.md, which is the source of truth. The six
+ * values in the BRAND SWAP POINTS block are inferred, not read from
+ * testfort.com (the site was not reachable from the build environment) - replace
+ * them with the real TestFort style-guide hexes and the whole app rethemes.
+ */
+
+:root {
+  /* ==================================================================
+     BRAND SWAP POINTS — the ONLY six values to replace with the real
+     TestFort style-guide colors. Everything below derives from these.
+     Current values are INFERRED, not read from testfort.com.
+     ================================================================== */
+  --brand-primary:        #12508F;  /* corporate blue — buttons, links, focus  */
+  --brand-primary-hover:  #0E3F72;  /* ~12% darker                             */
+  --brand-primary-active: #0B3159;  /* ~20% darker, pressed state              */
+  --brand-primary-tint:   #E9F1FA;  /* 6% primary over white — subtle fills    */
+  --accent:               #E4610F;  /* warm orange — one emphasis per screen   */
+  --ink-inverse-bg:       #0B1728;  /* dark navy — footer / dark sections      */
+  /* ================================================================== */
+
+  /* --- Brand ramp (derived) --- */
+  --brand-tint-strong:    #CFE0F5;  /* borders on tinted surfaces              */
+  --brand-on-primary:     #FFFFFF;  /* text/icon color on a primary fill       */
+  --brand-ring:           #1A6FE0;  /* focus ring — brighter than primary      */
+
+  /* --- Accent ramp (derived) --- */
+  --accent-hover:         #C24F09;  /* use for accent FILLS carrying text      */
+  --accent-ink:           #A8430A;  /* accent as TEXT on light surfaces        */
+  --accent-soft:          #FDEFE4;  /* accent tinted background                */
+  --accent-soft-border:   #F6D2B4;
+
+  /* --- Ink scale (3 steps) --- */
+  --ink-strong:           #0F1B2A;  /* headings, numbers, emphasis             */
+  --ink-body:             #2E3A4B;  /* body copy, answer text                  */
+  --ink-muted:            #5A6B80;  /* labels, meta, helper text, placeholders */
+  --ink-on-dark:          #E6EDF6;  /* body text inside dark sections          */
+  --ink-muted-on-dark:    #9FB0C4;
+
+  /* --- Surface scale (3 steps) --- */
+  --surface-0:            #FFFFFF;  /* cards, modals, elevated content         */
+  --surface-1:            #F7F9FC;  /* page background                         */
+  --surface-2:            #EDF1F7;  /* inset wells, disabled fills, track bg   */
+  --surface-inverse:      var(--ink-inverse-bg);
+  --surface-inverse-2:    #132339;  /* raised block inside a dark section      */
+
+  /* --- Borders --- */
+  --border:               #DCE3EC;  /* default hairline                        */
+  --border-strong:        #C2CCD9;  /* inputs, interactive outlines            */
+  --border-inverse:       #2A3B52;
+
+  /* --- Semantic --- */
+  --success:              #12794C;
+  --success-soft:         #E4F4EC;
+  --success-border:       #B7E0C9;
+  --warning:              #B45309;
+  --warning-ink:          #8A4B04;  /* warning as text on light surfaces       */
+  --warning-soft:         #FDF0DC;
+  --warning-border:       #F2D5A6;
+  --danger:               #C0243C;
+  --danger-soft:          #FCE8EC;
+  --danger-border:        #F3C2CC;
+  --info:                 #1069C2;
+  --info-ink:             #0B4F93;
+  --info-soft:            #E5F0FB;
+  --info-border:          #C2DBF5;
+
+  /* --- Seniority tiers: solid (fills/badges) + soft (backgrounds) + ink (text on soft) --- */
+  --tier-trainee:         #5B6B7F;  /* grey  */
+  --tier-trainee-soft:    #EEF1F5;
+  --tier-trainee-ink:     #47566A;
+  --tier-trainee-border:  #CFD7E0;
+
+  --tier-junior:          #14764A;  /* green */
+  --tier-junior-soft:     #E3F5EC;
+  --tier-junior-ink:      #0F5C3A;
+  --tier-junior-border:   #B4E0C9;
+
+  --tier-middle:          #8A5E00;  /* amber */
+  --tier-middle-soft:     #FBF0D9;
+  --tier-middle-ink:      #6E4A00;
+  --tier-middle-border:   #EBD199;
+
+  --tier-senior:          #B72544;  /* crimson */
+  --tier-senior-soft:     #FBE6EB;
+  --tier-senior-ink:      #8E1B34;
+  --tier-senior-border:   #F0BCC8;
+
+  /* --- Typography --- */
+  --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+               system-ui, -apple-system, sans-serif;
+  --font-display: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+                  system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Consolas,
+               "Liberation Mono", monospace;
+
+  --fs-display: 3rem;      /* 48px */
+  --fs-h1:      2.25rem;   /* 36px */
+  --fs-h2:      1.75rem;   /* 28px */
+  --fs-h3:      1.375rem;  /* 22px */
+  --fs-h4:      1.125rem;  /* 18px */
+  --fs-body-lg: 1.0625rem; /* 17px */
+  --fs-body:    1rem;      /* 16px */
+  --fs-sm:      0.875rem;  /* 14px */
+  --fs-xs:      0.75rem;   /* 12px */
+
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  --lh-tight:   1.15;
+  --lh-heading: 1.25;
+  --lh-snug:    1.45;
+  --lh-body:    1.6;
+
+  --ls-display: -0.02em;
+  --ls-heading: -0.01em;
+  --ls-body:     0;
+  --ls-caps:     0.06em;
+
+  /* --- Spacing (4px base) --- */
+  --sp-1:  0.25rem;  /*  4px */
+  --sp-2:  0.5rem;   /*  8px */
+  --sp-3:  0.75rem;  /* 12px */
+  --sp-4:  1rem;     /* 16px */
+  --sp-5:  1.5rem;   /* 24px */
+  --sp-6:  2rem;     /* 32px */
+  --sp-7:  2.5rem;   /* 40px */
+  --sp-8:  3rem;     /* 48px */
+  --sp-9:  4rem;     /* 64px */
+  --sp-10: 6rem;     /* 96px */
+
+  /* --- Radius --- */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;   /* buttons, inputs                    */
+  --radius-lg:   12px;  /* answer options, small cards        */
+  --radius-xl:   16px;  /* question card, modal               */
+  --radius-2xl:  24px;  /* hero / result panel                */
+  --radius-pill: 999px; /* chips, progress track, tier badge  */
+
+  /* --- Shadows (cool-tinted, low and wide) --- */
+  --shadow-xs: 0 1px 2px rgba(15, 27, 42, 0.06);
+  --shadow-sm: 0 1px 3px rgba(15, 27, 42, 0.08), 0 1px 2px rgba(15, 27, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 27, 42, 0.08), 0 1px 3px rgba(15, 27, 42, 0.04);
+  --shadow-lg: 0 12px 32px rgba(15, 27, 42, 0.12), 0 2px 8px rgba(15, 27, 42, 0.06);
+  --shadow-xl: 0 24px 64px rgba(15, 27, 42, 0.18), 0 4px 12px rgba(15, 27, 42, 0.08);
+  --shadow-focus: 0 0 0 3px rgba(26, 111, 224, 0.35);
+
+  /* --- Layout --- */
+  --container-max: 1200px;
+  --content-max:   720px;  /* question / reading column */
+  --header-h:      64px;
+
+  /* --- Motion --- */
+  --ease-out:  cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast:  120ms;
+  --dur-base:  200ms;
+  --dur-slow:  320ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --brand-primary:        #2F72C4;
+    --brand-primary-hover:  #3D82D6;
+    --brand-primary-active: #2865B0;
+    --brand-primary-tint:   #12293F;
+    --brand-tint-strong:    #1D3E5D;
+    --brand-ring:           #6FB2F5;
+
+    --accent:               #FF8A3D;
+    --accent-hover:         #FF9E5C;
+    --accent-ink:           #FF8A3D;
+    --accent-soft:          #351C0C;
+    --accent-soft-border:   #6B3A16;
+
+    --ink-strong:           #F2F6FB;
+    --ink-body:             #D5DFEC;
+    --ink-muted:            #9FB0C4;
+
+    --surface-0:            #142235;
+    --surface-1:            #0B1728;
+    --surface-2:            #1B2C43;
+    --surface-inverse:      #F7F9FC;
+    --surface-inverse-2:    #EDF1F7;
+
+    --border:               #2A3B52;
+    --border-strong:        #3A4E68;
+
+    --success:              #3FBF80;
+    --success-soft:         #10352A;
+    --success-border:       #1F5D45;
+    --warning:              #E5A93A;
+    --warning-ink:          #E5A93A;
+    --warning-soft:         #33270B;
+    --warning-border:       #6A5218;
+    --danger:               #F2708B;
+    --danger-soft:          #35141D;
+    --danger-border:        #6E2A3B;
+    --info:                 #6FB2F5;
+    --info-ink:             #6FB2F5;
+    --info-soft:            #10263D;
+    --info-border:          #244A70;
+
+    --tier-trainee:         #A8B6C7;
+    --tier-trainee-soft:    #1B2838;
+    --tier-trainee-ink:     #A8B6C7;
+    --tier-trainee-border:  #3A4A5E;
+    --tier-junior:          #4ECB8B;
+    --tier-junior-soft:     #10352A;
+    --tier-junior-ink:      #4ECB8B;
+    --tier-junior-border:   #1F5D45;
+    --tier-middle:          #E5A93A;
+    --tier-middle-soft:     #33270B;
+    --tier-middle-ink:      #E5A93A;
+    --tier-middle-border:   #6A5218;
+    --tier-senior:          #F2708B;
+    --tier-senior-soft:     #35141D;
+    --tier-senior-ink:      #F2708B;
+    --tier-senior-border:   #6E2A3B;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-focus: 0 0 0 3px rgba(111, 178, 245, 0.4);
+  }
+}
+
+[data-theme="dark"] {
+  --brand-primary:        #2F72C4;
+  --brand-primary-hover:  #3D82D6;
+  --brand-primary-active: #2865B0;
+  --brand-primary-tint:   #12293F;
+  --brand-tint-strong:    #1D3E5D;
+  --brand-ring:           #6FB2F5;
+
+  --accent:               #FF8A3D;
+  --accent-hover:         #FF9E5C;
+  --accent-ink:           #FF8A3D;
+  --accent-soft:          #351C0C;
+  --accent-soft-border:   #6B3A16;
+
+  --ink-strong:           #F2F6FB;
+  --ink-body:             #D5DFEC;
+  --ink-muted:            #9FB0C4;
+
+  --surface-0:            #142235;
+  --surface-1:            #0B1728;
+  --surface-2:            #1B2C43;
+  --surface-inverse:      #F7F9FC;
+  --surface-inverse-2:    #EDF1F7;
+
+  --border:               #2A3B52;
+  --border-strong:        #3A4E68;
+
+  --success:              #3FBF80;
+  --success-soft:         #10352A;
+  --success-border:       #1F5D45;
+  --warning:              #E5A93A;
+  --warning-ink:          #E5A93A;
+  --warning-soft:         #33270B;
+  --warning-border:       #6A5218;
+  --danger:               #F2708B;
+  --danger-soft:          #35141D;
+  --danger-border:        #6E2A3B;
+  --info:                 #6FB2F5;
+  --info-ink:             #6FB2F5;
+  --info-soft:            #10263D;
+  --info-border:          #244A70;
+
+  --tier-trainee:         #A8B6C7;
+  --tier-trainee-soft:    #1B2838;
+  --tier-trainee-ink:     #A8B6C7;
+  --tier-trainee-border:  #3A4A5E;
+  --tier-junior:          #4ECB8B;
+  --tier-junior-soft:     #10352A;
+  --tier-junior-ink:      #4ECB8B;
+  --tier-junior-border:   #1F5D45;
+  --tier-middle:          #E5A93A;
+  --tier-middle-soft:     #33270B;
+  --tier-middle-ink:      #E5A93A;
+  --tier-middle-border:   #6A5218;
+  --tier-senior:          #F2708B;
+  --tier-senior-soft:     #35141D;
+  --tier-senior-ink:      #F2708B;
+  --tier-senior-border:   #6E2A3B;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-focus: 0 0 0 3px rgba(111, 178, 245, 0.4);
+}
