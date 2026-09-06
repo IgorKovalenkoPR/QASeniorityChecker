@@ -198,10 +198,19 @@ export function recordIntegrityEvents(
   tx(events);
 }
 
+/**
+ * The events that count towards the verdict.
+ *
+ * Forgiven rows are excluded. They stay in the table for the audit trail, but a
+ * reinstated attempt whose log still counted would be terminated again by the
+ * very next replay - the undo has to be visible to `evaluateIntegrity`, not
+ * just to the status column.
+ */
 export function loadIntegrityEvents(db: Db, attemptId: string): IntegrityEvent[] {
   const rows = db
     .prepare(
-      'SELECT type, occurred_at, duration_ms FROM integrity_events WHERE attempt_id = ? ORDER BY id',
+      `SELECT type, occurred_at, duration_ms FROM integrity_events
+        WHERE attempt_id = ? AND forgiven = 0 ORDER BY id`,
     )
     .all(attemptId) as { type: string; occurred_at: number; duration_ms: number | null }[];
   return rows.map((r) => ({
@@ -385,6 +394,118 @@ export function buildResult(
     questions,
     answersRevealed: options.revealAnswers,
   };
+}
+
+// --- reinstatement ---------------------------------------------------------
+
+export interface Reinstatement {
+  attemptId: string;
+  /** The reviewer's stated reason, kept verbatim. */
+  note: string;
+  previousReason: string | null;
+  previousStrikes: number;
+  /** Events moved out of the verdict. Still readable in the integrity log. */
+  forgivenEvents: number;
+  reinstatedAt: number;
+  /** How much of the paper the candidate actually got to answer. */
+  answeredQuestions: number;
+  totalQuestions: number;
+}
+
+export function loadReinstatement(db: Db, attemptId: string): Reinstatement | null {
+  const row = db
+    .prepare('SELECT * FROM attempt_reinstatements WHERE attempt_id = ?')
+    .get(attemptId) as
+    | {
+        attempt_id: string;
+        note: string;
+        previous_reason: string | null;
+        previous_strikes: number;
+        forgiven_events: number;
+        reinstated_at: number;
+      }
+    | undefined;
+  if (!row) return null;
+  return {
+    attemptId: row.attempt_id,
+    note: row.note,
+    previousReason: row.previous_reason,
+    previousStrikes: row.previous_strikes,
+    forgivenEvents: row.forgiven_events,
+    reinstatedAt: row.reinstated_at,
+    answeredQuestions: Object.keys(loadAnswers(db, attemptId)).length,
+    totalQuestions: QUESTIONS_PER_VARIANT,
+  };
+}
+
+/**
+ * Overturn a termination and score what the candidate had answered.
+ *
+ * The proctor can be wrong, and until now being wrong was final: a terminated
+ * attempt is never scored, the answers sat in `attempt_answers` unreachable by
+ * any endpoint, and the only remedy was editing SQLite by hand inside the
+ * container.
+ *
+ * Undoing the status alone would not work. `applyIntegrityVerdict` replays the
+ * whole stored log on every report, so the next heartbeat would terminate the
+ * attempt again on the same events. The events therefore have to be forgiven -
+ * marked so the verdict ignores them, while the rows stay for the audit trail.
+ *
+ * What this recovers is the RESULT, not the remaining time. The candidate's
+ * browser discarded its session when it was told the attempt was over, so there
+ * is no live test to resume; if they should get a full run, start a fresh
+ * attempt instead. That is also why the answered count is returned: scoring a
+ * paper abandoned at question five yields a rung that means nothing, and the
+ * reviewer has to be able to see that rather than read the level and trust it.
+ */
+export function reinstateAttempt(
+  db: Db,
+  attempt: AttemptRow,
+  note: string,
+): { reinstated: Reinstatement; result: AttemptResult } {
+  if (attempt.status !== 'terminated') {
+    throw new AttemptError(
+      409,
+      'Скасовувати нічого: цю спробу не було завершено за правилами чесності.',
+      'attempt_not_terminated',
+    );
+  }
+
+  const now = Date.now();
+  const previousReason = attempt.termination_reason;
+  const previousStrikes = attempt.strikes;
+
+  const forgive = db.transaction(() => {
+    const forgiven = db
+      .prepare('UPDATE integrity_events SET forgiven = 1 WHERE attempt_id = ? AND forgiven = 0')
+      .run(attempt.id).changes;
+    db.prepare(
+      `UPDATE attempts
+          SET status = 'in_progress', strikes = 0, termination_reason = NULL, finished_at = NULL
+        WHERE id = ?`,
+    ).run(attempt.id);
+    db.prepare(
+      `INSERT INTO attempt_reinstatements
+         (attempt_id, note, previous_reason, previous_strikes, forgiven_events, reinstated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(attempt.id, note, previousReason, previousStrikes, forgiven, now);
+    return forgiven;
+  });
+  forgive();
+
+  // Re-read rather than patching the caller's copy: the row is the source of
+  // truth for the submit that follows, and submitAttempt refuses a terminated
+  // status - which is exactly what the transaction above has just cleared.
+  const restored = getAttempt(db, attempt.id);
+  if (!restored) throw new AttemptError(404, 'Спроба зникла під час скасування.', 'attempt_missing');
+  submitAttempt(db, restored);
+
+  const scored = getAttempt(db, attempt.id);
+  if (!scored) throw new AttemptError(404, 'Спроба зникла під час скасування.', 'attempt_missing');
+  const reinstated = loadReinstatement(db, attempt.id);
+  if (!reinstated) throw new AttemptError(500, 'Не вдалося зафіксувати скасування.', 'reinstate_failed');
+
+  return { reinstated, result: buildResult(db, scored, { revealAnswers: true }) };
 }
 
 export const attemptMeta = {

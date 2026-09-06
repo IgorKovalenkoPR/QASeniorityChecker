@@ -569,3 +569,239 @@ describe('admin endpoints', () => {
     }
   });
 });
+
+describe('reinstating a falsely terminated attempt', () => {
+  const ADMIN = 'test-admin-token';
+  let adminApp: FastifyInstance;
+  let adminDb: Db;
+
+  beforeEach(() => {
+    process.env.QASC_ADMIN_TOKEN = ADMIN;
+    ({ app: adminApp, db: adminDb } = buildTestApp());
+  });
+
+  afterEach(async () => {
+    delete process.env.QASC_ADMIN_TOKEN;
+    await adminApp.close();
+    adminDb.close();
+  });
+
+  const adminAuth = { authorization: `Bearer ${ADMIN}` };
+
+  async function begin() {
+    const response = await adminApp.inject({
+      method: 'POST',
+      url: '/api/attempts',
+      payload: {
+        candidateName: 'Anna Tester',
+        candidateEmail: 'anna@example.com',
+        acceptedRules: true,
+      },
+    });
+    const body = response.json();
+    return { ...body, candidateAuth: { authorization: `Bearer ${body.token}` } };
+  }
+
+  async function answerCorrectly(started: any, howMany: number) {
+    const variant = VARIANT_BY_NUMBER.get(started.attempt.variantNumber)!;
+    let answered = 0;
+    for (const questionId of variant.questionIds) {
+      if (answered >= howMany) break;
+      const source = QUESTION_BY_ID.get(questionId)!;
+      const paper = started.questions.find((q: any) => q.id === questionId);
+      const optionIds = source.correctOptionIds.map((correctId) => {
+        const text = source.options.find((o) => o.id === correctId)!.text;
+        return paper.options.find((o: any) => o.text === text).id;
+      });
+      await adminApp.inject({
+        method: 'PUT',
+        url: `/api/attempts/${started.attempt.id}/answers`,
+        headers: started.candidateAuth,
+        payload: { questionId, optionIds },
+      });
+      answered += 1;
+    }
+    return answered;
+  }
+
+  /** A 45-second absence is past the hard-terminate threshold on its own. */
+  function condemn(started: any) {
+    return adminApp.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/integrity`,
+      headers: started.candidateAuth,
+      payload: {
+        events: [{ type: 'visibility_hidden', occurredAt: Date.now(), durationMs: 45_000 }],
+      },
+    });
+  }
+
+  function reinstate(id: string, note = 'Кандидат втратив фокус через звінок; я був поруч.') {
+    return adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${id}/reinstate`,
+      headers: adminAuth,
+      payload: { note },
+    });
+  }
+
+  it('scores the answers a terminated attempt had already given', async () => {
+    // The answers were always in the database; before this endpoint no route
+    // could reach them, so a proctor mistake destroyed the result outright.
+    const started = await begin();
+    const answered = await answerCorrectly(started, 8);
+    expect((await condemn(started)).json().attempt.status).toBe('terminated');
+
+    const response = await reinstate(started.attempt.id);
+    expect(response.statusCode).toBe(200);
+    const { reinstated, result } = response.json();
+
+    expect(result.status).toBe('submitted');
+    expect(result.answersRevealed).toBe(true);
+    expect(result.breakdown.correct).toBe(answered);
+    expect(reinstated.previousReason).toContain('приховано');
+    expect(reinstated.previousStrikes).toBeGreaterThanOrEqual(4);
+    expect(reinstated.forgivenEvents).toBe(1);
+    expect(reinstated.note).toContain('звінок');
+  });
+
+  it('reports how little of the paper was answered, so the rung is not read as a verdict', async () => {
+    // Scoring a paper abandoned at question three yields a level that means
+    // nothing. The reviewer has to see the coverage next to it.
+    const started = await begin();
+    await answerCorrectly(started, 3);
+    await condemn(started);
+
+    const { reinstated } = (await reinstate(started.attempt.id)).json();
+    expect(reinstated.answeredQuestions).toBe(3);
+    expect(reinstated.totalQuestions).toBe(20);
+  });
+
+  it('keeps the forgiven events out of the verdict, so the attempt is not condemned again', async () => {
+    // This is the property that makes reinstatement real rather than cosmetic.
+    // applyIntegrityVerdict replays the WHOLE stored log on every report and
+    // rewrites the strike count from it, and the integrity route accepts
+    // reports whatever the status - so an attempt whose log still counted would
+    // have its terminating strikes written straight back onto it.
+    const started = await begin();
+    await answerCorrectly(started, 5);
+    await condemn(started);
+    await reinstate(started.attempt.id);
+
+    const after = await adminApp.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/integrity`,
+      headers: started.candidateAuth,
+      payload: {
+        events: [{ type: 'window_blur', occurredAt: Date.now(), durationMs: 3_000 }],
+      },
+    });
+
+    // Only the one new event counts. Without forgiveness this would be back at
+    // the terminating total.
+    expect(after.json().verdict.strikes).toBe(1);
+    expect(after.json().verdict.terminate).toBe(false);
+    expect(after.json().attempt.status).toBe('submitted');
+  });
+
+  it('keeps the forgiven events in the audit log rather than deleting them', async () => {
+    const started = await begin();
+    await condemn(started);
+    await reinstate(started.attempt.id);
+
+    const audit = await adminApp.inject({
+      method: 'GET',
+      url: `/api/admin/attempts/${started.attempt.id}/integrity`,
+      headers: adminAuth,
+    });
+    const body = audit.json();
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0].forgiven).toBe(1);
+    expect(body.events[0].type).toBe('visibility_hidden');
+    expect(body.reinstatement.note).toContain('звінок');
+    expect(body.reinstatement.previousStrikes).toBeGreaterThanOrEqual(4);
+  });
+
+  it('marks the attempt as reinstated in the roster, so it never reads as a clean run', async () => {
+    const started = await begin();
+    await condemn(started);
+    await reinstate(started.attempt.id);
+
+    const roster = await adminApp.inject({
+      method: 'GET',
+      url: '/api/admin/attempts',
+      headers: adminAuth,
+    });
+    const row = roster.json().attempts.find((a: any) => a.id === started.attempt.id);
+    expect(row.reinstated).toBe(1);
+    expect(row.reinstatement_note).toContain('звінок');
+    expect(row.level).toBeTruthy();
+  });
+
+  it('refuses to reinstate an attempt that was never terminated', async () => {
+    const started = await begin();
+    const response = await reinstate(started.attempt.id);
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('attempt_not_terminated');
+  });
+
+  it('will not reinstate the same attempt twice', async () => {
+    const started = await begin();
+    await condemn(started);
+    expect((await reinstate(started.attempt.id)).statusCode).toBe(200);
+    const second = await reinstate(started.attempt.id);
+    expect(second.statusCode).toBe(409);
+    expect(second.json().error).toBe('attempt_not_terminated');
+  });
+
+  it('requires the reviewer to state a reason', async () => {
+    // Overturning a termination is a judgement someone has to own in writing:
+    // the roster will show this attempt beside clean ones.
+    const started = await begin();
+    await condemn(started);
+
+    const blank = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      headers: adminAuth,
+      payload: { note: '  ' },
+    });
+    expect(blank.statusCode).toBe(400);
+
+    const missing = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      headers: adminAuth,
+      payload: {},
+    });
+    expect(missing.statusCode).toBe(400);
+  });
+
+  it('refuses an unknown attempt, and refuses anyone without the admin token', async () => {
+    const missing = await adminApp.inject({
+      method: 'POST',
+      url: '/api/admin/attempts/does-not-exist/reinstate',
+      headers: adminAuth,
+      payload: { note: 'whatever' },
+    });
+    expect(missing.statusCode).toBe(404);
+
+    const started = await begin();
+    await condemn(started);
+    const unauthorised = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      payload: { note: 'no token here' },
+    });
+    expect(unauthorised.statusCode).toBe(401);
+
+    // And the candidate's own token must not open the reviewer's door.
+    const asCandidate = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      headers: started.candidateAuth,
+      payload: { note: 'let me out' },
+    });
+    expect(asCandidate.statusCode).toBe(401);
+  });
+});

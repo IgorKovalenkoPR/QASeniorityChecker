@@ -223,19 +223,49 @@ export of the bank to anyone holding the link.
 The reviewer's view lives behind `QASC_ADMIN_TOKEN`:
 
 ```
-GET /api/admin/attempts                    # roster, newest first, with the final rung
-GET /api/admin/attempts/:id/result         # per-question detail, answers and explanations
-GET /api/admin/attempts/:id/integrity      # the honesty event log for that attempt
+GET  /api/admin/attempts                   # roster, newest first, with the final rung
+GET  /api/admin/attempts/:id/result        # per-question detail, answers and explanations
+GET  /api/admin/attempts/:id/integrity     # the honesty event log, plus any reinstatement
+POST /api/admin/attempts/:id/reinstate     # overturn a false termination and score it
 ```
 
 `/result` is the endpoint the pilot needs: without it you can see that somebody scored Middle but
 not which questions they missed, and the candidate's own token is stored only as a hash, so it
 cannot be replayed after the fact.
 
-One consequence worth knowing before the pilot: a terminated attempt is never scored, so it has no
-row in `attempt_results` and `/result` returns 404 for it. The answers themselves are still in
-`attempt_answers` regardless of status, so nothing is lost - but reinstating a terminated attempt
-is currently a manual SQLite edit, not an endpoint.
+A terminated attempt is never scored, so it has no row in `attempt_results` and `/result` returns
+404 for it. The answers themselves are kept in `attempt_answers` whatever the status, so nothing is
+ever actually lost.
+
+### Overturning a termination
+
+The proctor can be wrong, and `POST /api/admin/attempts/:id/reinstate` is how a reviewer says so.
+It takes a required `note` - overturning a termination is a judgement someone has to own in
+writing, because the reinstated attempt then sits in the roster next to clean ones.
+
+```bash
+curl -X POST "$BASE/api/admin/attempts/$ID/reinstate" \
+  -H "authorization: Bearer $QASC_ADMIN_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"note":"Wifi у переговорці впав; кандидат був на звʼязку зі мною."}'
+```
+
+It forgives the attempt's honesty events, scores the answers as they stand, and returns the full
+reviewer result together with a record of the decision. Three things are worth knowing:
+
+- **Forgiven, not deleted.** The events stay in `integrity_events` with `forgiven = 1` and are
+  still returned by the `/integrity` endpoint. They are only excluded from the verdict - which is
+  the part that matters, because the verdict is recomputed by replaying the whole log on every
+  report, so a log that still counted would write the terminating strikes straight back.
+- **It recovers the result, not the remaining time.** The candidate's browser discarded its session
+  when it was told the attempt was over, so there is no live test to resume. If they should get a
+  full run, start a fresh attempt.
+- **Read the coverage, not just the rung.** The response reports `answeredQuestions` against
+  `totalQuestions`. An attempt cut short at question three still produces a level, and that level
+  means nothing; the roster marks such attempts with `reinstated: 1` and the reviewer's note.
+
+Reinstatement is one-shot per attempt: a second call returns 409, since by then the attempt is
+submitted rather than terminated.
 
 ---
 
