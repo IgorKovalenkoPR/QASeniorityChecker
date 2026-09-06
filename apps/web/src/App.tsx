@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IntegrityEvent } from '@qasc/core';
 import { ApiError, api } from './lib/api.js';
-import type { AttemptView, MetaResponse, PaperQuestion, ResultResponse } from './lib/api.js';
+import type {
+  AttemptView,
+  Identity,
+  MetaResponse,
+  PaperQuestion,
+  ResultResponse,
+} from './lib/api.js';
 import { AnswerQueue } from './lib/answerQueue.js';
 import type { AnswerQueueStatus } from './lib/answerQueue.js';
 import { Proctor } from './lib/proctor.js';
 import { Banner, Card } from './components/ui.js';
+import { SignInScreen } from './screens/SignInScreen.js';
 import { StartScreen } from './screens/StartScreen.js';
 import { TestScreen } from './screens/TestScreen.js';
 import { ResultScreen } from './screens/ResultScreen.js';
@@ -47,10 +54,14 @@ function writeSession(session: StoredSession | null): void {
   }
 }
 
-type Phase = 'loading' | 'start' | 'test' | 'result' | 'terminated';
+type Phase = 'loading' | 'signin' | 'start' | 'test' | 'result' | 'terminated';
 
 export function App() {
   const [phase, setPhase] = useState<Phase>('loading');
+  const [identity, setIdentity] = useState<Identity | null>(null);
+  // Set by the OAuth callback when it refuses the sign-in, so the reason can be
+  // shown instead of dumping the candidate back on an unexplained login screen.
+  const [authError, setAuthError] = useState<string | null>(null);
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [attempt, setAttempt] = useState<AttemptView | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -78,12 +89,41 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
 
+    // The callback puts the reason in the query string. Read it once, then
+    // strip it, so a reload does not keep re-announcing a failure.
+    const params = new URLSearchParams(window.location.search);
+    const failed = params.get('auth_error');
+    if (failed) {
+      setAuthError(failed);
+      params.delete('auth_error');
+      const rest = params.toString();
+      window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''));
+    }
+
     void (async () => {
+      let loaded: MetaResponse | null = null;
       try {
-        const loaded = await api.meta();
+        loaded = await api.meta();
         if (!cancelled) setMeta(loaded);
       } catch {
         // Metadata is decorative; the start screen has sensible fallbacks.
+      }
+
+      // Google mode: nothing can be started without a verified identity, so
+      // resolve it before anything else and show the sign-in screen if absent.
+      if (loaded?.auth.mode === 'google') {
+        try {
+          const who = await api.me();
+          if (cancelled) return;
+          setIdentity(who);
+          if (!who) {
+            setPhase('signin');
+            return;
+          }
+        } catch {
+          if (!cancelled) setPhase('signin');
+          return;
+        }
       }
 
       const session = readSession();
@@ -288,7 +328,7 @@ export function App() {
   // --- actions -------------------------------------------------------------
 
   const handleStart = useCallback(
-    async (input: { candidateName: string; candidateEmail: string }) => {
+    async (input: { candidateName?: string; candidateEmail?: string }) => {
       setBusy(true);
       setError(null);
       try {
@@ -390,8 +430,16 @@ export function App() {
       <main className={`app__main ${phase === 'start' ? 'app__main--narrow' : ''}`.trim()}>
         {phase === 'loading' ? <Card>Завантаження...</Card> : null}
 
+        {phase === 'signin' ? <SignInScreen meta={meta} authError={authError} /> : null}
+
         {phase === 'start' ? (
-          <StartScreen meta={meta} onStart={(input) => void handleStart(input)} busy={busy} error={error} />
+          <StartScreen
+            meta={meta}
+            identity={identity}
+            onStart={(input) => void handleStart(input)}
+            busy={busy}
+            error={error}
+          />
         ) : null}
 
         {phase === 'test' && attempt ? (

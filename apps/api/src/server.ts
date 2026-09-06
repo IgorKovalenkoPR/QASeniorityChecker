@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
@@ -10,9 +11,20 @@ import { validateBank } from '@qasc/content';
 import { config } from './config.js';
 import { getDatabase, openDatabase } from './db.js';
 import type { Db } from './db.js';
+import { registerAuthRoutes } from './authRoutes.js';
+import type { CodeExchanger } from './auth.js';
 import { registerAdminRoutes, registerRoutes } from './routes.js';
 
-export function buildApp(db: Db = getDatabase()): FastifyInstance {
+export interface AppDeps {
+  /**
+   * Overrides the Google authorization-code exchange. Only tests pass this:
+   * everything worth testing about the callback - state checking, the domain
+   * rules, the cookie, the error mapping - is independent of the exchange.
+   */
+  exchangeCode?: CodeExchanger;
+}
+
+export function buildApp(db: Db = getDatabase(), deps: AppDeps = {}): FastifyInstance {
   // Fail fast rather than serving a subtly broken paper to a real candidate.
   const problems = validateBank();
   if (problems.length > 0) {
@@ -38,8 +50,14 @@ export function buildApp(db: Db = getDatabase()): FastifyInstance {
     allowList: () => process.env.NODE_ENV === 'test',
   });
 
+  // Signed cookies carry the session. Registered before the routes that read
+  // them, and with the same secret that survives a deploy - rotating it logs
+  // everyone out mid-test.
+  app.register(cookie, { secret: config.sessionSecret });
+
   app.register(async (instance) => {
     registerRoutes(instance, db);
+    registerAuthRoutes(instance, deps.exchangeCode);
     registerAdminRoutes(instance, db);
   });
 
@@ -60,9 +78,9 @@ export function buildApp(db: Db = getDatabase()): FastifyInstance {
 }
 
 /** Test helper: a fully wired app over an isolated in-memory database. */
-export function buildTestApp(): { app: FastifyInstance; db: Db } {
+export function buildTestApp(deps: AppDeps = {}): { app: FastifyInstance; db: Db } {
   const db = openDatabase(':memory:');
-  return { app: buildApp(db), db };
+  return { app: buildApp(db, deps), db };
 }
 
 // pathToFileURL, not string-concatenating a file:// prefix onto resolve():

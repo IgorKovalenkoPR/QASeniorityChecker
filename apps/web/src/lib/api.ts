@@ -60,12 +60,19 @@ export interface ResultResponse {
   answersRevealed: boolean;
 }
 
+export interface Identity {
+  authenticated: true;
+  email: string;
+  name: string;
+}
+
 export interface MetaResponse {
   questionsPerTest: number;
   variantCount: number;
   durationSeconds: number;
   heartbeatSeconds: number;
   bank: { total: number; byTier: Record<Tier, number>; bySource: Record<string, number> };
+  auth: { mode: 'google' | 'open'; allowedEmailDomains: string[] };
   integrity: { strikesAllowed: number; graceMs: number; hardTerminateMs: number };
   ladder: { level: Level; label: string; requires: Partial<Record<Tier, number>>; rationale: string }[];
   levelLabels: Record<Level, string>;
@@ -104,7 +111,27 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 export const api = {
   meta: () => request<MetaResponse>('/meta'),
 
-  start: (input: { candidateName: string; candidateEmail: string }) =>
+  /**
+   * The signed-in candidate, or null. A 401 here is the ordinary state for
+   * someone who has not signed in yet, not an error worth surfacing.
+   */
+  me: async (): Promise<Identity | null> => {
+    try {
+      return await request<Identity>('/auth/me');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return null;
+      throw error;
+    }
+  },
+
+  logout: () => request<null>('/auth/logout', { method: 'POST' }),
+
+  /**
+   * In Google mode the identity comes from the session cookie and the body
+   * carries only the acknowledgement - passing a name or an email would be
+   * ignored by the server anyway.
+   */
+  start: (input: { candidateName?: string; candidateEmail?: string } = {}) =>
     request<StartResponse>('/attempts', {
       method: 'POST',
       body: JSON.stringify({ ...input, acceptedRules: true }),

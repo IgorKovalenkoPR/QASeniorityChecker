@@ -207,9 +207,76 @@ being regenerated, or variant generation stopped being deterministic.
 | `QASC_OPTION_SECRET` | *generated in dev* | **Required in production**, ≥ 32 chars |
 | `QASC_ADMIN_TOKEN` | *unset* | Admin endpoints return 503 until set |
 | `QASC_CORS_ORIGIN` | `http://localhost:5173` | |
+| `QASC_AUTH_MODE` | `google` in production, `open` otherwise | How candidates identify themselves |
+| `QASC_ALLOWED_EMAIL_DOMAINS` | *unset* | **Required** in `google` mode, e.g. `qarea.com,testfort.com` |
+| `QASC_GOOGLE_CLIENT_ID` | *unset* | **Required** in `google` mode |
+| `QASC_GOOGLE_CLIENT_SECRET` | *unset* | **Required** in `google` mode |
+| `QASC_SESSION_SECRET` | *generated in dev* | **Required in production**, >= 32 chars |
+| `QASC_SESSION_TTL_SECONDS` | `43200` | How long a sign-in lasts (12 h) |
+| `QASC_PUBLIC_URL` | *derived from the request* | Set when the derived origin is not the registered one |
 
 `QASC_OPTION_SECRET` must be stable for the lifetime of an attempt: rotating it mid-test invalidates
 the option ids of every paper in flight. The process refuses to start in production without it.
+
+### Signing in
+
+Candidates identify themselves with Google, restricted to an allow-list of email domains.
+Before this, the email was a text field validated for shape and nothing else - anyone could type
+anyone's address and the result was filed under whatever they typed. That is tolerable for a link
+handed to three people you trust and useless once the test has a public URL.
+
+Three properties, each of which is a way the field version was wrong:
+
+- The identity comes from Google's ID token, verified against Google's own keys, never from
+  anything the browser sent. Passing a `candidateEmail` in the request body is ignored.
+- `email_verified` must be true. A Google account can carry an address it never proved it owns,
+  and an unverified address is exactly as good as a typed one.
+- The domain must be on the allow-list. This is the control that keeps a public URL from handing
+  the 504-question bank to the internet, so the process **refuses to start** without it rather
+  than defaulting to "any Google account".
+
+#### What to create in Google Cloud
+
+1. In the Google Cloud console, pick or create a project, then **APIs & Services -> Credentials
+   -> Create credentials -> OAuth client ID**, application type **Web application**.
+2. Under **Authorised redirect URIs** add exactly one entry, matching your deployment:
+
+```
+https://<your-host>/api/auth/google/callback
+```
+
+   Google compares this byte for byte. If you also want to run it locally, add
+   `http://localhost:3000/api/auth/google/callback` as a second entry.
+3. Copy the client ID and client secret into `QASC_GOOGLE_CLIENT_ID` and
+   `QASC_GOOGLE_CLIENT_SECRET`.
+4. Set `QASC_ALLOWED_EMAIL_DOMAINS` to your work domains, comma-separated.
+5. Generate the two secrets once and keep them - rotating either is disruptive rather than
+   dangerous, but it is disruptive in the middle of somebody's test:
+
+```bash
+echo "QASC_OPTION_SECRET=$(openssl rand -hex 32)"  >> .env   # invalidates in-flight papers
+echo "QASC_SESSION_SECRET=$(openssl rand -hex 32)" >> .env   # signs out everyone
+```
+
+No consent screen verification is needed while the client is restricted to accounts in your own
+Workspace organisation.
+
+#### The configuration refuses to start rather than run half-open
+
+Each of these is a state in which the test would either mis-attribute results or leak the bank,
+so the process exits instead of serving:
+
+| Condition | Why it is fatal |
+| --- | --- |
+| `google` mode with no `QASC_ALLOWED_EMAIL_DOMAINS` | Google sign-in with no allow-list admits every Google account there is |
+| `google` mode with no client ID or secret | There is no sign-in to perform |
+| `QASC_AUTH_MODE=open` with `NODE_ENV=production` | Anyone could start an attempt under any address |
+| `NODE_ENV=production` with no `QASC_SESSION_SECRET` | A random one per deploy signs everyone out on every deploy |
+| `NODE_ENV=production` with no `QASC_OPTION_SECRET` | A random one per deploy invalidates every paper in flight |
+
+`QASC_AUTH_MODE=open` keeps the old typed name and email. It is the default outside
+production, which is what makes local development and the test suite work without a Google
+project, and it is refused in production.
 
 ### Reading a finished attempt
 
