@@ -97,14 +97,54 @@ function attemptView(attempt: AttemptRow) {
   };
 }
 
+interface ClientError {
+  status: number;
+  code: string;
+  message: string;
+}
+
+/**
+ * Recognise a rejection that blames the request rather than the server.
+ *
+ * Fastify's own errors - an empty body under a JSON content-type, an
+ * unparseable payload, a content-type nothing can parse - carry their own 4xx
+ * `statusCode`. The error reaching a Fastify error handler is typed `unknown`,
+ * so the shape is checked rather than asserted.
+ *
+ * Strictly 4xx. A 5xx must not be passed through: an internal failure's own
+ * wording is not something to hand to a client.
+ */
+function asClientError(error: unknown): ClientError | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const shape = error as { statusCode?: unknown; code?: unknown; message?: unknown };
+  if (typeof shape.statusCode !== 'number') return null;
+  if (shape.statusCode < 400 || shape.statusCode >= 500) return null;
+  return {
+    status: shape.statusCode,
+    code: typeof shape.code === 'string' ? shape.code : 'unknown',
+    message: typeof shape.message === 'string' ? shape.message : 'Некоректний запит.',
+  };
+}
+
 export function registerRoutes(app: FastifyInstance, db: Db): void {
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     if (error instanceof AttemptError) {
       return reply.code(error.statusCode).send({ error: error.code, message: error.message });
     }
     if (error instanceof z.ZodError) {
       return reply.code(400).send({ error: 'invalid_request', issues: error.issues });
     }
+
+    // Collapsing a framework rejection into 500 told the caller the server had
+    // broken when in fact their request had, and logged someone else's mistake
+    // at error level - during a pilot that is the difference between a quiet
+    // log and one that reads like an outage.
+    const client = asClientError(error);
+    if (client) {
+      request.log.warn({ code: client.code }, `malformed request rejected: ${client.message}`);
+      return reply.code(client.status).send({ error: 'invalid_request', message: client.message });
+    }
+
     app.log.error(error);
     return reply.code(500).send({ error: 'internal_error', message: 'Непередбачена помилка сервера.' });
   });
