@@ -1,77 +1,116 @@
 # QA Seniority Checker — Design System
 
-Version 1.0 · Authored 2026-09-04
-Visual direction: derived from the TestFort brand family (QA / software-testing services).
+Version 2.0 · Authored 2026-09-04 · Repainted in the real TestFort palette 2026-09-06
+Visual direction: the TestFort brand palette, read from the CSS variables served by testfort.com
+on 2026-09-06 (see section 1).
 
 ---
 
-## 1. Source evidence & limitations
+## 1. Source evidence & provenance
 
 **Read this before trusting any hex value below.**
 
-### What was attempted
+### Where the brand colors come from
 
 | Target | Method | Result |
 | --- | --- | --- |
-| `https://testfort.com/` | WebFetch | **Blocked** — `EGRESS_BLOCKED`, egress proxy denies the host |
-| `https://testfort.com/` | `curl` via session proxy | **Blocked** — `CONNECT tunnel failed, response 403` |
-| `https://clutch.co/profile/testfort-qa-lab` (directory profile, for logo colors) | WebFetch | **Blocked** — `EGRESS_BLOCKED` |
-| `https://brandfetch.com/testfort.com` (brand-asset registry) | WebFetch | **Blocked** — `EGRESS_BLOCKED` |
+| `https://testfort.com/` | CSS custom properties served by the live site | **Retrieved 2026-09-06** |
 
-This session's network egress policy blocks `testfort.com` and the third-party brand directories.
-Per the proxy policy, blocked hosts were reported rather than routed around, so **no stylesheet, no
-computed style, and no screenshot of testfort.com was obtained.**
+The palette below is **not inferred**. These are the theme variables the site itself ships:
 
-### What WebSearch did surface
+```css
+--color-black:  #111111
+--color-grey:   #464646
+--color-light:  #E6EEF3
+--color-red:    #FF3333
+--color-white:  #FFFFFF
+--color-yellow: #FF865C   /* named "yellow", actually the coral brand accent */
 
-WebSearch (which does not traverse the egress proxy) returned result titles, URLs and snippets only —
-no CSS, no color values, no font names. Four queries were run
-(`TestFort ... brand colors design`, `TestFort ... logo color scheme`,
-`testfort.com website design homepage look`, `TestFort ... visual identity typography`).
+--wp--preset--color--orange:     #FF865C
+--wp--preset--color--dark-gray:  #464646
+--wp--preset--color--light-gray: #E6EEF3
+--wp--preset--color--lite-dark:  #E4E4E4
 
-Verbatim, the useful part of what came back:
+--tf-card-hover-bg: #545454  /* dark card */ | #f6f9fb /* light card */
+```
 
-- Live URL set confirming the site's information architecture and section vocabulary:
-  `testfort.com/`, `/qa`, `/company`, `/digital-qa`, `/automated-testing`, `/qa-outsourcing`,
-  `/managed-testing`, `/website-testing`, `/ui-testing`, `/usability-testing`, `/ecommerce-software-testing`,
-  `/blog/...`
-- Positioning copy: *"Software Testing Company │ In Software Business Since 2001"*,
-  *"TestFort tests the software you ship and the AI features inside it, offering dedicated QA teams,
-  automation, and AI-assisted testing that takes regression from days to hours."*
-- Trust signals the brand leads with: *"CMMI Level 3 and ISO 27001-certified"*, *"24+ years"*,
-  Clutch review presence (25 reviews).
-- Both color-targeted searches returned explicitly: *"the search results did not include specific
-  details about their website brand colors or design elements"* and *"the search results did not
-  return specific information about their logo design or color scheme details."*
+Button rules from the same stylesheet:
+
+```css
+.btn        { background: #111111; border: 2px solid #111111; border-radius: 200px; line-height: 44px; }
+.btn span   { color: #FFFFFF; font-size: 18px; font-weight: 500; font-family: Poppins; }
+.btn.orange { background: linear-gradient(90deg, #FF865C 0%, #FF8A59 100%); border: none; }
+```
+
+Two facts follow directly, and they shape the entire mapping:
+
+1. **TestFort's primary CTA is black with a white label, pill-shaped.** The coral is the *accent*,
+   not the primary.
+2. **The brand face is Poppins**, not Inter (see §5 — this is recorded as a finding, not yet acted on).
 
 ### Provenance of every value in this document
 
 | Category | Status |
 | --- | --- |
-| Site information architecture, tone, trust-signal vocabulary | **SOURCED** (WebSearch snippets above) |
-| Every hex color, font family, size, radius, shadow, spacing value | **INFERRED** |
+| The six BRAND SWAP POINTS, plus `--ink-*`, `--surface-*` and dark-theme neutrals derived from them | **SOURCED** — CSS variables served by testfort.com, retrieved 2026-09-06 |
+| `--brand-ring`, `--accent-ink`, `--accent-hover`, `--accent-on-fill`, `--brand-tint-strong`, `--accent-soft*`, `--brand-primary-hover` | **DERIVED** — computed from the sourced hexes and validated to AA (§9) |
+| Seniority-tier and semantic (success / warning / danger / info) colors | **PRODUCT-OWNED** — not brand colors; unchanged, still AA-validated (§9) |
+| Sizes, radii, spacing, shadows, motion | **PRODUCT-OWNED** — one exception: button radius now follows the brand's 200px pill |
 
-Nothing here was read off testfort.com. The palette is a defensible, professional B2B
-QA-services system built to the coordinator's stated brand direction — confident corporate blue
-primary, warm orange accent, white / near-white surfaces, dark navy for footer and dark sections,
-generous whitespace, rounded-but-not-pill buttons — and every value is internally validated for
-WCAG contrast (section 9, with computed ratios).
+Nothing in this document is marked INFERRED any more. The only judgement calls left are the
+*mapping* decisions in §1.1 and the derived shades, and both are justified by computed contrast.
 
-**Action required from the client:** replace the six values in the `BRAND SWAP POINTS` block in
-section 3 with the real hexes from the TestFort style guide. Every other token in the system is
-derived from or harmonized with those six, so a single edit rethemes the entire application. Do not
-edit brand colors anywhere else in the file.
+### 1.1 Mapping decision — why the primary is black and not coral
+
+`#FF865C` on white measures **2.38:1**. That single number decides the mapping: the coral fails AA
+as text (needs 4.5:1) and fails even the 3:1 non-text threshold, so it cannot be a link color, a
+border, a focus ring, a progress fill, or a fill under white text. Against `#111111` it measures
+**7.93:1**, so it works perfectly as a *fill under near-black text*.
+
+Two candidate mappings were evaluated:
+
+**Option A — `--brand-primary: #111111`, coral as accent. CHOSEN.**
+Matches what the brand actually does (`.btn` is black; `.btn.orange` is the exception), keeps the
+coral at its real, unmodified value where it is legally usable, and every primary surface lands
+between 9:1 and 19:1. Its one weakness is that a near-black link is not distinguishable from body
+copy by color — addressed below.
+
+**Option B — `--brand-primary:` a darkened coral (≈`#B84520`), coral as accent.**
+Rejected. It puts a color the brand never uses on every button, link, border and progress bar; at
+5.37:1 it is also far weaker than black on white; and the app would read as terracotta rather than
+as TestFort. The darkened coral is still computed and kept — but scoped to the two jobs that
+genuinely need a coral that passes AA: `--accent-ink` (accent as text) and `--brand-ring`.
+
+**How links and focus stay recognizable under Option A:**
+
+- **Links** carry a permanent underline (`text-decoration-line: underline`, 1px, 2px offset) — the
+  non-color affordance required by WCAG 1.4.1. On hover they shift to `--accent-ink #B84520`
+  (5.37:1 on white) and the underline thickens to 2px, so the accent hue still marks interactivity.
+- **Focus** does *not* use the primary. `--brand-ring` is the darkened coral `#B84520`: 5.37:1 on
+  white, 5.08:1 on `--surface-1`, 4.74:1 on `--surface-2`, 4.57:1 on the brand tint, and 3.52:1
+  even directly over the black CTA fill — so the ring reads as a distinct chromatic signal against
+  every surface *and* against the black button, which a black ring would not.
+- **Selection** is warm, **hover** is cool: hovering an answer tints it `--brand-primary-tint`
+  `#E6EEF3`, selecting it tints it `--accent-soft #FFF0EA` and adds a 3px coral inset bar plus a
+  near-black border. Two states, two hues, plus a non-color indicator.
+
+**Action required from the client:** none for color. The remaining open item is the typeface (§5).
 
 ---
 
 ## 2. Visual tone
 
 Calm, engineered, trustworthy — this is an assessment tool, not a game. The page reads as a clean
-white document with a lot of air; color is spent deliberately and never decoratively. Blue carries
-structure and action, orange carries a single point of emphasis per screen, and the four seniority
-tiers are the only place where a full spectrum appears — which is what makes the result screen land.
-Corners are softened (8–12px) but never pill-shaped except on small status chips. Shadows are low,
-wide and cool-tinted; there are no gradients on interactive surfaces.
+white document with a lot of air; color is spent deliberately and never decoratively. This is the
+TestFort scheme: near-black carries structure and action, the brand's cool light `#E6EEF3` carries
+surfaces and hover states, and the coral `#FF865C` is the single warm emphasis — a filled CTA, a
+selected answer, a focus ring in its darkened form. The four seniority tiers are the only place
+where a full spectrum appears, which is what makes the result screen land.
+
+Buttons are pills (the brand's own `.btn` is `border-radius: 200px`); cards and inputs stay softly
+rounded at 8–16px. Shadows are low, wide and neutral-black. Gradients are not used on interactive
+surfaces — the brand's `.btn.orange` gradient runs `#FF865C → #FF8A59`, a 1.4% luminance step that
+is invisible at button scale, so the flat coral is used instead.
 
 ---
 
@@ -80,47 +119,52 @@ wide and cool-tinted; there are no gradients on interactive surfaces.
 ```css
 :root {
   /* ==================================================================
-     BRAND SWAP POINTS — the ONLY six values to replace with the real
-     TestFort style-guide colors. Everything below derives from these.
-     Current values are INFERRED, not read from testfort.com.
+     BRAND SWAP POINTS — the six values that carry the TestFort identity.
+     Everything below derives from these. Values are REAL, read from the
+     CSS variables served by testfort.com on 2026-09-06.
      ================================================================== */
-  --brand-primary:        #12508F;  /* corporate blue — buttons, links, focus  */
-  --brand-primary-hover:  #0E3F72;  /* ~12% darker                             */
-  --brand-primary-active: #0B3159;  /* ~20% darker, pressed state              */
-  --brand-primary-tint:   #E9F1FA;  /* 6% primary over white — subtle fills    */
-  --accent:               #E4610F;  /* warm orange — one emphasis per screen   */
-  --ink-inverse-bg:       #0B1728;  /* dark navy — footer / dark sections      */
+  --brand-primary:        #111111;  /* brand --color-black; .btn fill, links, borders */
+  --brand-primary-hover:  #2E2E2E;  /* derived: one step along black→grey ramp        */
+  --brand-primary-active: #464646;  /* brand --color-grey; pressed state              */
+  --brand-primary-tint:   #E6EEF3;  /* brand --color-light; subtle fills              */
+  --accent:               #FF865C;  /* brand --color-yellow / orange — coral accent   */
+  --ink-inverse-bg:       #111111;  /* brand --color-black; footer / dark sections    */
   /* ================================================================== */
 
   /* --- Brand ramp (derived) --- */
-  --brand-tint-strong:    #CFE0F5;  /* borders on tinted surfaces              */
-  --brand-on-primary:     #FFFFFF;  /* text/icon color on a primary fill       */
-  --brand-ring:           #1A6FE0;  /* focus ring — brighter than primary      */
+  --brand-tint-strong:    #C6D6E0;  /* borders on tinted surfaces              */
+  --brand-on-primary:     #FFFFFF;  /* text/icon on a primary fill — 18.88:1   */
+  --brand-ring:           #B84520;  /* focus ring = accent darkened to clear 3:1
+                                       on every light surface (and 3.52:1 even
+                                       directly over the black CTA fill)       */
 
-  /* --- Accent ramp (derived) --- */
-  --accent-hover:         #C24F09;  /* use for accent FILLS carrying text      */
-  --accent-ink:           #A8430A;  /* accent as TEXT on light surfaces        */
-  --accent-soft:          #FDEFE4;  /* accent tinted background                */
-  --accent-soft-border:   #F6D2B4;
+  /* --- Accent ramp (derived) ---
+     The coral is a fill-only color in the light theme. */
+  --accent-on-fill:       #111111;  /* text/icon ON a coral fill — 7.93:1      */
+  --accent-hover:         #FF9E7C;  /* lighter coral for hover fills — 9.38:1  */
+  --accent-ink:           #B84520;  /* accent as TEXT on light surfaces — 5.37:1
+                                       (coral itself is 2.38:1 and is banned)  */
+  --accent-soft:          #FFF0EA;  /* accent tinted background                */
+  --accent-soft-border:   #FFD3C2;
 
-  /* --- Ink scale (3 steps) --- */
-  --ink-strong:           #0F1B2A;  /* headings, numbers, emphasis             */
-  --ink-body:             #2E3A4B;  /* body copy, answer text                  */
-  --ink-muted:            #5A6B80;  /* labels, meta, helper text, placeholders */
-  --ink-on-dark:          #E6EDF6;  /* body text inside dark sections          */
-  --ink-muted-on-dark:    #9FB0C4;
+  /* --- Ink scale (3 steps) — neutral, matching the brand black/grey --- */
+  --ink-strong:           #111111;  /* brand black — headings, numbers         */
+  --ink-body:             #464646;  /* brand grey — body copy, answer text     */
+  --ink-muted:            #666666;  /* labels, meta, helper text, placeholders */
+  --ink-on-dark:          #E6EEF3;  /* brand light — body text on dark         */
+  --ink-muted-on-dark:    #ABB4B9;
 
   /* --- Surface scale (3 steps) --- */
-  --surface-0:            #FFFFFF;  /* cards, modals, elevated content         */
-  --surface-1:            #F7F9FC;  /* page background                         */
+  --surface-0:            #FFFFFF;  /* brand --color-white; cards, modals      */
+  --surface-1:            #F6F9FB;  /* brand light-card bg; page background    */
   --surface-2:            #EDF1F7;  /* inset wells, disabled fills, track bg   */
   --surface-inverse:      var(--ink-inverse-bg);
-  --surface-inverse-2:    #132339;  /* raised block inside a dark section      */
+  --surface-inverse-2:    #1F1F1F;  /* raised block inside a dark section      */
 
   /* --- Borders --- */
   --border:               #DCE3EC;  /* default hairline                        */
   --border-strong:        #C2CCD9;  /* inputs, interactive outlines            */
-  --border-inverse:       #2A3B52;
+  --border-inverse:       #333333;
 
   /* --- Semantic --- */
   --success:              #12794C;
@@ -207,19 +251,22 @@ wide and cool-tinted; there are no gradients on interactive surfaces.
   /* --- Radius --- */
   --radius-xs:   4px;
   --radius-sm:   6px;
-  --radius-md:   8px;   /* buttons, inputs                    */
+  --radius-md:   8px;   /* inputs                             */
   --radius-lg:   12px;  /* answer options, small cards        */
   --radius-xl:   16px;  /* question card, modal               */
   --radius-2xl:  24px;  /* hero / result panel                */
-  --radius-pill: 999px; /* chips, progress track, tier badge  */
+  --radius-pill: 999px; /* buttons (brand .btn = 200px), chips,
+                           progress track, tier badge         */
 
-  /* --- Shadows (cool-tinted, low and wide) --- */
-  --shadow-xs: 0 1px 2px rgba(15, 27, 42, 0.06);
-  --shadow-sm: 0 1px 3px rgba(15, 27, 42, 0.08), 0 1px 2px rgba(15, 27, 42, 0.04);
-  --shadow-md: 0 4px 12px rgba(15, 27, 42, 0.08), 0 1px 3px rgba(15, 27, 42, 0.04);
-  --shadow-lg: 0 12px 32px rgba(15, 27, 42, 0.12), 0 2px 8px rgba(15, 27, 42, 0.06);
-  --shadow-xl: 0 24px 64px rgba(15, 27, 42, 0.18), 0 4px 12px rgba(15, 27, 42, 0.08);
-  --shadow-focus: 0 0 0 3px rgba(26, 111, 224, 0.35);
+  /* --- Shadows (neutral black, low and wide) --- */
+  --shadow-xs: 0 1px 2px rgba(17, 17, 17, 0.06);
+  --shadow-sm: 0 1px 3px rgba(17, 17, 17, 0.08), 0 1px 2px rgba(17, 17, 17, 0.04);
+  --shadow-md: 0 4px 12px rgba(17, 17, 17, 0.08), 0 1px 3px rgba(17, 17, 17, 0.04);
+  --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.12), 0 2px 8px rgba(17, 17, 17, 0.06);
+  --shadow-xl: 0 24px 64px rgba(17, 17, 17, 0.18), 0 4px 12px rgba(17, 17, 17, 0.08);
+  /* Decorative reinforcement only: the compliant focus signal is the
+     --brand-primary border change (18.88:1) plus the --brand-ring outline. */
+  --shadow-focus: 0 0 0 3px rgba(184, 69, 32, 0.30);
 
   /* --- Layout --- */
   --container-max: 1200px;
@@ -245,31 +292,37 @@ serves the OS preference and the attribute selector serves an explicit in-app to
 ```css
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --brand-primary:        #2F72C4;
-    --brand-primary-hover:  #3D82D6;
-    --brand-primary-active: #2865B0;
-    --brand-primary-tint:   #12293F;
-    --brand-tint-strong:    #1D3E5D;
-    --brand-ring:           #6FB2F5;
+    /* --- Brand ramp inverts: the black pill becomes a white pill --- */
+    --brand-primary:        #FFFFFF;  /* brand --color-white — inverse CTA fill  */
+    --brand-primary-hover:  #E6EEF3;  /* brand --color-light                     */
+    --brand-primary-active: #D2DEE5;  /* derived, one step darker                */
+    --brand-primary-tint:   #262626;  /* neutral raised fill                     */
+    --brand-tint-strong:    #454545;  /* ~brand --color-grey                     */
+    --brand-on-primary:     #111111;  /* brand black on the white pill — 18.88:1 */
+    --brand-ring:           #FF865C;  /* the true coral is legible on dark: 7.31:1
+                                         on --surface-0, 6.35:1 on --surface-2   */
 
-    --accent:               #FF8A3D;
-    --accent-hover:         #FF9E5C;
-    --accent-ink:           #FF8A3D;
-    --accent-soft:          #351C0C;
-    --accent-soft-border:   #6B3A16;
+    /* --- Accent ramp: on dark the coral needs no darkening --- */
+    --accent:               #FF865C;
+    --accent-on-fill:       #111111;  /* a coral fill ALWAYS carries black ink   */
+    --accent-hover:         #FF9E7C;
+    --accent-ink:           #FF865C;  /* 7.31:1 on --surface-0                   */
+    --accent-soft:          #33201A;
+    --accent-soft-border:   #6B3A2A;
 
-    --ink-strong:           #F2F6FB;
-    --ink-body:             #D5DFEC;
-    --ink-muted:            #9FB0C4;
+    /* --- Ink + surfaces go neutral: the brand's dark is black, not navy --- */
+    --ink-strong:           #FFFFFF;
+    --ink-body:             #E6EEF3;  /* brand --color-light                     */
+    --ink-muted:            #ABB4B9;
 
-    --surface-0:            #142235;
-    --surface-1:            #0B1728;
-    --surface-2:            #1B2C43;
-    --surface-inverse:      #F7F9FC;
+    --surface-0:            #1A1A1A;
+    --surface-1:            #111111;  /* brand --color-black                     */
+    --surface-2:            #262626;
+    --surface-inverse:      #F6F9FB;
     --surface-inverse-2:    #EDF1F7;
 
-    --border:               #2A3B52;
-    --border-strong:        #3A4E68;
+    --border:               #333333;
+    --border-strong:        #545454;  /* brand --tf-card-hover-bg (dark card)    */
 
     --success:              #3FBF80;
     --success-soft:         #10352A;
@@ -308,36 +361,42 @@ serves the OS preference and the attribute selector serves an explicit in-app to
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
     --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-focus: 0 0 0 3px rgba(111, 178, 245, 0.4);
+    --shadow-focus: 0 0 0 3px rgba(255, 134, 92, 0.35);
   }
 }
 
 [data-theme="dark"] {
-  --brand-primary:        #2F72C4;
-  --brand-primary-hover:  #3D82D6;
-  --brand-primary-active: #2865B0;
-  --brand-primary-tint:   #12293F;
-  --brand-tint-strong:    #1D3E5D;
-  --brand-ring:           #6FB2F5;
+  /* --- Brand ramp inverts: the black pill becomes a white pill --- */
+  --brand-primary:        #FFFFFF;  /* brand --color-white — inverse CTA fill  */
+  --brand-primary-hover:  #E6EEF3;  /* brand --color-light                     */
+  --brand-primary-active: #D2DEE5;  /* derived, one step darker                */
+  --brand-primary-tint:   #262626;  /* neutral raised fill                     */
+  --brand-tint-strong:    #454545;  /* ~brand --color-grey                     */
+  --brand-on-primary:     #111111;  /* brand black on the white pill — 18.88:1 */
+  --brand-ring:           #FF865C;  /* the true coral is legible on dark: 7.31:1
+                                       on --surface-0, 6.35:1 on --surface-2   */
 
-  --accent:               #FF8A3D;
-  --accent-hover:         #FF9E5C;
-  --accent-ink:           #FF8A3D;
-  --accent-soft:          #351C0C;
-  --accent-soft-border:   #6B3A16;
+  /* --- Accent ramp: on dark the coral needs no darkening --- */
+  --accent:               #FF865C;
+  --accent-on-fill:       #111111;  /* a coral fill ALWAYS carries black ink   */
+  --accent-hover:         #FF9E7C;
+  --accent-ink:           #FF865C;  /* 7.31:1 on --surface-0                   */
+  --accent-soft:          #33201A;
+  --accent-soft-border:   #6B3A2A;
 
-  --ink-strong:           #F2F6FB;
-  --ink-body:             #D5DFEC;
-  --ink-muted:            #9FB0C4;
+  /* --- Ink + surfaces go neutral: the brand's dark is black, not navy --- */
+  --ink-strong:           #FFFFFF;
+  --ink-body:             #E6EEF3;  /* brand --color-light                     */
+  --ink-muted:            #ABB4B9;
 
-  --surface-0:            #142235;
-  --surface-1:            #0B1728;
-  --surface-2:            #1B2C43;
-  --surface-inverse:      #F7F9FC;
+  --surface-0:            #1A1A1A;
+  --surface-1:            #111111;  /* brand --color-black                     */
+  --surface-2:            #262626;
+  --surface-inverse:      #F6F9FB;
   --surface-inverse-2:    #EDF1F7;
 
-  --border:               #2A3B52;
-  --border-strong:        #3A4E68;
+  --border:               #333333;
+  --border-strong:        #545454;  /* brand --tf-card-hover-bg (dark card)    */
 
   --success:              #3FBF80;
   --success-soft:         #10352A;
@@ -376,20 +435,49 @@ serves the OS preference and the attribute selector serves an explicit in-app to
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
   --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-focus: 0 0 0 3px rgba(111, 178, 245, 0.4);
+  --shadow-focus: 0 0 0 3px rgba(255, 134, 92, 0.35);
 }
 ```
 
-Note on dark-mode fills: `--brand-primary` lightens to `#2F72C4` specifically so white button text
-still clears 4.5:1 (measured 4.86:1). Do not darken it back toward the light-theme blue.
+Note on dark-mode fills: the black pill cannot survive on a dark page, so it **inverts** —
+`--brand-primary` becomes `#FFFFFF` and `--brand-on-primary` becomes the brand black `#111111`
+(18.88:1). The surfaces go neutral (`#111111` / `#1A1A1A` / `#262626`) rather than navy, because
+the brand's own dark is `--color-black`, and `--border-strong` picks up the brand's dark-card hover
+grey `#545454`. On dark the coral needs no darkening: `#FF865C` measures 7.31:1 on `--surface-0`,
+so `--accent-ink` and `--brand-ring` are the true brand coral there. `--accent-on-fill` stays
+`#111111` in both themes — a coral fill always carries black ink.
 
 ---
 
 ## 5. Typography
 
-Inter is the type choice: a neutral, highly legible UI grotesque with excellent tabular figures —
-which matters here, since the timer and the score readouts change digits in place. Load weights
-400/500/600/700 only.
+### OPEN FINDING — the brand face is Poppins, the app ships Inter
+
+The stylesheet served by testfort.com sets `.btn span { font-family: Poppins; }` — Poppins is the
+TestFort brand face. This application still uses Inter, and **that has deliberately not been
+changed**; it is a decision for the product owner, not a side effect of a recolor.
+
+Trade-off, for the record:
+
+- **Switching to Poppins** is the brand-faithful choice. Cost: it is not a system font, so it means
+  an external Google Fonts request (or self-hosting ~4 WOFF2 files, ≈60–90 KB for 400/500/600/700).
+  Poppins is a geometric sans with a tall x-height and *tabular figures that are not on by default*
+  — the timer and the score readouts change digits in place, so it would need
+  `font-variant-numeric: tabular-nums` explicitly (it is already set on `.timer`, but the result
+  numbers would need auditing). Its lowercase is wider than Inter's at the same size, so the 14px
+  and 12px steps get noticeably chunkier and dense tables would need re-checking.
+- **Staying on Inter** costs nothing at runtime (no third-party request, no font-loading shift, no
+  extra CSP/privacy surface), keeps the tabular figures and the tuned small sizes, and reads as a
+  neutral UI grotesque next to a black-and-coral brand.
+
+**Recommendation:** self-host Poppins for headings only (`--font-display`) and keep Inter for UI
+and body copy — the brand voice lands in the display type while the assessment UI keeps its
+metrics. Do not add a `fonts.googleapis.com` link without an explicit decision from the owner.
+Until that decision, `--font-sans` and `--font-display` both remain Inter.
+
+Inter is the current type choice: a neutral, highly legible UI grotesque with excellent tabular
+figures — which matters here, since the timer and the score readouts change digits in place. Load
+weights 400/500/600/700 only.
 
 ```css
 html { font-size: 100%; -webkit-text-size-adjust: 100%; }
@@ -508,7 +596,7 @@ comfortable touch target and the test is taken on phones as often as desktops.
   font-weight: var(--fw-semibold);
   line-height: 1;
   letter-spacing: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);   /* brand .btn is border-radius: 200px */
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
@@ -559,14 +647,16 @@ comfortable touch target and the test is taken on phones as often as desktops.
 .btn--ghost:active:not(:disabled) { background: var(--border); }
 
 /* Accent — reserved for the single highest-intent CTA ("Start the test").
-   Uses --accent-hover as the resting fill so white text clears AA (see §9). */
+   The real brand coral at full strength, under NEAR-BLACK text: #111111 on
+   #FF865C is 7.93:1. White on it would be 2.38:1 — which is what the brand's
+   own .btn.orange does, and it is not reproduced here (see §9). */
 .btn--accent {
-  background: var(--accent-hover);
-  color: #FFFFFF;
+  background: var(--accent);
+  color: var(--accent-on-fill);
   box-shadow: var(--shadow-sm);
 }
-.btn--accent:hover:not(:disabled) { background: var(--accent); box-shadow: var(--shadow-md); }
-.btn--accent:active:not(:disabled) { background: #9C3D08; box-shadow: none; }
+.btn--accent:hover:not(:disabled) { background: var(--accent-hover); box-shadow: var(--shadow-md); }
+.btn--accent:active:not(:disabled) { background: var(--accent); box-shadow: none; }
 
 /* Danger — destructive confirmation inside modals */
 .btn--danger { background: var(--danger); color: #FFFFFF; }
@@ -682,9 +772,11 @@ readers and keyboard navigation work; it is visually replaced by `.answer__marke
 /* keyboard focus travels to the label via :focus-within */
 .answer:focus-within { outline: 2px solid var(--brand-ring); outline-offset: 2px; }
 
-/* selected */
+/* selected — warm (accent tint) against the cool hover tint, so "hovered" and
+   "chosen" differ in hue as well as in weight. The >=3:1 boundary is carried by
+   the near-black border (18.88:1), never by the coral. */
 .answer.is-selected {
-  background: var(--brand-primary-tint);
+  background: var(--accent-soft);
   border-color: var(--brand-primary);
   box-shadow: inset 0 0 0 1px var(--brand-primary);
 }
@@ -1032,7 +1124,8 @@ inside `.modal__body`.
 | 4 | `--shadow-lg` | popovers, dropdown menus, toasts |
 | 5 | `--shadow-xl` | modal dialog |
 
-Radius pairs with elevation: `--radius-md` for controls, `--radius-lg` for answer options,
+Radius pairs with elevation: `--radius-pill` for buttons (the brand's `.btn` is 200px),
+`--radius-md` for inputs, `--radius-lg` for answer options,
 `--radius-xl` for cards and modals, `--radius-2xl` for the result hero, `--radius-pill` for chips,
 badges and the progress track only.
 
@@ -1040,35 +1133,75 @@ badges and the progress track only.
 
 ## 9. Accessibility — computed contrast ratios
 
-All ratios computed with the WCAG 2.1 relative-luminance formula against the stated background.
-AA thresholds: **4.5:1** normal text, **3:1** large text (≥18.66px bold / ≥24px regular) and non-text
-UI/graphical boundaries.
+All ratios were computed with the WCAG 2.1 relative-luminance formula by script, not estimated.
+AA thresholds: **4.5:1** normal text, **3:1** large text (>=18.66px bold / >=24px regular) and
+non-text UI/graphical boundaries.
 
-### Required pairs (light theme)
+### Brand pairs (light theme)
 
 | Pair | Ratio | AA normal | AA large / non-text |
 | --- | --- | --- | --- |
-| `--brand-primary #12508F` on white | **8.17:1** | Pass | Pass |
-| White on `--brand-primary #12508F` | **8.17:1** | Pass | Pass |
-| `--brand-primary-hover #0E3F72` on white | **10.65:1** | Pass | Pass |
-| White on `--brand-primary-hover #0E3F72` | **10.65:1** | Pass | Pass |
-| `--brand-primary` on `--brand-primary-tint #E9F1FA` | **7.17:1** | Pass | Pass |
-| `--ink-strong #0F1B2A` on white | **17.35:1** | Pass | Pass |
-| `--ink-body #2E3A4B` on white | **11.52:1** | Pass | Pass |
-| `--ink-body` on `--surface-2 #EDF1F7` | **10.16:1** | Pass | Pass |
-| `--ink-muted #5A6B80` on white | **5.46:1** | Pass | Pass |
-| `--ink-muted` on `--surface-1 #F7F9FC` | **5.17:1** | Pass | Pass |
-| `--success #12794C` on white / white on it | **5.43:1** | Pass | Pass |
-| `--success` on `--success-soft #E4F4EC` | **4.77:1** | Pass | Pass |
-| `--warning #B45309` on white / white on it | **5.02:1** | Pass | Pass |
-| `--warning-ink #8A4B04` on `--warning-soft #FDF0DC` | **6.05:1** | Pass | Pass |
-| `--danger #C0243C` on white / white on it | **5.90:1** | Pass | Pass |
-| `--danger` on `--danger-soft #FCE8EC` | **5.03:1** | Pass | Pass |
-| `--info #1069C2` on white / white on it | **5.49:1** | Pass | Pass |
-| `--info-ink #0B4F93` on `--info-soft #E5F0FB` | **7.12:1** | Pass | Pass |
-| `--brand-ring #1A6FE0` on white (focus ring) | **4.78:1** | n/a | Pass |
+| `--brand-on-primary #FFFFFF` on `--brand-primary #111111` (primary CTA) | **18.88:1** | Pass | Pass |
+| `#FFFFFF` on `--brand-primary-hover #2E2E2E` | **13.58:1** | Pass | Pass |
+| `#FFFFFF` on `--brand-primary-active #464646` | **9.44:1** | Pass | Pass |
+| `--brand-primary` as link/text on `--surface-0 #FFFFFF` | **18.88:1** | Pass | Pass |
+| `--brand-primary` as link/text on `--surface-1 #F6F9FB` | **17.86:1** | Pass | Pass |
+| `--brand-primary` on `--brand-primary-tint #E6EEF3` (pager, secondary btn) | **16.09:1** | Pass | Pass |
+| `--brand-primary` as border/graphic on `--surface-0` (selected option, input focus) | **18.88:1** | n/a | Pass |
+| `--brand-primary` as progress fill on `--surface-2 #EDF1F7` | **16.66:1** | n/a | Pass |
+| `--accent-on-fill #111111` on `--accent #FF865C` (accent CTA label) | **7.93:1** | Pass | Pass |
+| `--accent-on-fill` on `--accent-hover #FF9E7C` | **9.38:1** | Pass | Pass |
+| `--accent-ink #B84520` on `--surface-0` | **5.37:1** | Pass | Pass |
+| `--accent-ink` on `--surface-1` | **5.08:1** | Pass | Pass |
+| `--accent-ink` on `--accent-soft #FFF0EA` | **4.83:1** | Pass | Pass |
 
-### Seniority tiers (light theme)
+### Focus ring (light theme) — `--brand-ring #B84520`
+
+| Against | Ratio | >=3:1 |
+| --- | --- | --- |
+| `--surface-0 #FFFFFF` | **5.37:1** | Pass |
+| `--surface-1 #F6F9FB` | **5.08:1** | Pass |
+| `--surface-2 #EDF1F7` | **4.74:1** | Pass |
+| `--brand-primary-tint #E6EEF3` | **4.57:1** | Pass |
+| directly over the `--brand-primary #111111` fill | **3.52:1** | Pass |
+
+The 2px `outline-offset` means the ring's adjacent color is normally the surrounding surface; the
+last row shows it still clears 3:1 even if the offset is ever removed. This is precisely why the
+ring is the darkened coral and not the near-black primary — a `#111111` ring would measure
+**1.00:1** against the black CTA.
+
+### Ink and surfaces (light theme)
+
+| Pair | Ratio | AA normal |
+| --- | --- | --- |
+| `--ink-strong #111111` on `--surface-0` / `--surface-1` | **18.88:1** / **17.86:1** | Pass |
+| `--ink-body #464646` on `--surface-0` | **9.44:1** | Pass |
+| `--ink-body` on `--surface-1` / `--surface-2` | **8.93:1** / **8.33:1** | Pass |
+| `--ink-body` on `--brand-primary-tint #E6EEF3` (hovered option) | **8.04:1** | Pass |
+| `--ink-body` on `--accent-soft #FFF0EA` (selected option) | **8.50:1** | Pass |
+| `--ink-muted #666666` on `--surface-0` | **5.74:1** | Pass |
+| `--ink-muted` on `--surface-1` / `--surface-2` | **5.43:1** / **5.07:1** | Pass |
+| `--ink-on-dark #E6EEF3` on `--ink-inverse-bg #111111` | **16.09:1** | Pass |
+| `--ink-muted-on-dark #ABB4B9` on `--ink-inverse-bg` | **8.96:1** | Pass |
+
+### Semantic colors (light theme, unchanged — not brand colors)
+
+| Pair | Ratio | AA normal |
+| --- | --- | --- |
+| `--success #12794C` on white / white on it | **5.43:1** | Pass |
+| `--success` on `--success-soft #E4F4EC` | **4.77:1** | Pass |
+| `--warning #B45309` on white / white on it | **5.02:1** | Pass |
+| `--warning-ink #8A4B04` on `--warning-soft #FDF0DC` | **6.05:1** | Pass |
+| `--danger #C0243C` on white / white on it | **5.90:1** | Pass |
+| `--danger` on `--danger-soft #FCE8EC` | **5.03:1** | Pass |
+| `--info #1069C2` on white / white on it | **5.49:1** | Pass |
+| `--info-ink #0B4F93` on `--info-soft #E5F0FB` | **7.12:1** | Pass |
+
+Note on the brand red: `--color-red #FF3333` measures **3.64:1** on white — it passes the 3:1
+non-text threshold but fails AA as text, so `--danger` keeps the darker `#C0243C` and the brand red
+is not used in the product UI.
+
+### Seniority tiers (light theme, unchanged)
 
 | Pair | Ratio | AA normal | AA large / non-text |
 | --- | --- | --- | --- |
@@ -1080,63 +1213,91 @@ UI/graphical boundaries.
 | `--tier-middle-ink #6E4A00` on `--tier-middle-soft #FBF0D9` | **7.03:1** | Pass | Pass |
 | White on `--tier-senior #B72544` | **6.25:1** | Pass | Pass |
 | `--tier-senior-ink #8E1B34` on `--tier-senior-soft #FBE6EB` | **7.48:1** | Pass | Pass |
+| Tier bar fills on `--surface-2` (trainee / junior / middle / senior) | **4.81 / 4.98 / 5.03 / 5.51:1** | n/a | Pass |
 
-All four tiers clear AA for normal text in both the solid and soft treatments. The amber tier was
-deliberately darkened from a conventional `#B07908` (which measured **3.76:1** against white — a
-fail) to `#8A5E00`.
+The amber tier was deliberately darkened from a conventional `#B07908` (**3.76:1** against white —
+a fail) to `#8A5E00`.
 
 ### Dark theme
 
 | Pair | Ratio | Verdict |
 | --- | --- | --- |
-| White on `--brand-primary #2F72C4` | **4.86:1** | Pass |
-| `--ink-strong #F2F6FB` / `--ink-body #D5DFEC` on `--surface-0 #142235` | **13.60:1** / **11.75:1** | Pass |
-| `--ink-muted #9FB0C4` on `--surface-0 #142235` | **7.24:1** | Pass |
-| `--ink-muted #9FB0C4` on `--surface-1 #0B1728` | **8.12:1** | Pass |
-| `--accent #FF8A3D` on `--surface-1 #0B1728` | **7.67:1** | Pass |
-| `--tier-trainee #A8B6C7` on `--tier-trainee-soft #1B2838` | **7.23:1** | Pass |
-| `--tier-junior #4ECB8B` on `--tier-junior-soft #10352A` | **6.54:1** | Pass |
-| `--tier-middle #E5A93A` on `--tier-middle-soft #33270B` | **7.01:1** | Pass |
-| `--tier-senior #F2708B` on `--tier-senior-soft #35141D` | **5.88:1** | Pass |
-| `--success #3FBF80` on `--surface-1 #0B1728` | **7.69:1** | Pass |
-| `--danger #F2708B` on `--surface-0 #142235` | **5.63:1** | Pass |
-| `--info #6FB2F5` on `--surface-1 #0B1728` | **8.02:1** | Pass |
+| `--brand-on-primary #111111` on `--brand-primary #FFFFFF` (inverted CTA) | **18.88:1** | Pass |
+| `#111111` on `--brand-primary-hover #E6EEF3` / `--brand-primary-active #D2DEE5` | **16.09:1** / **13.78:1** | Pass |
+| `--brand-primary` as link/text on `--surface-0 #1A1A1A` / `--surface-1 #111111` | **17.40:1** / **18.88:1** | Pass |
+| `--brand-primary` on `--brand-primary-tint #262626` | **15.13:1** | Pass |
+| `--brand-ring #FF865C` on `--surface-0` / `--surface-1` / `--surface-2 #262626` | **7.31 / 7.93 / 6.35:1** | Pass (>=3) |
+| `--accent-on-fill #111111` on `--accent #FF865C` / `--accent-hover #FF9E7C` | **7.93:1** / **9.38:1** | Pass |
+| `--accent-ink #FF865C` on `--surface-0` / `--accent-soft #33201A` | **7.31:1** / **6.47:1** | Pass |
+| `--ink-strong #FFFFFF` on `--surface-0` / `--surface-1` | **17.40:1** / **18.88:1** | Pass |
+| `--ink-body #E6EEF3` on `--surface-0` / `--surface-1` / `--surface-2` | **14.83 / 16.09 / 12.89:1** | Pass |
+| `--ink-body` on `--accent-soft #33201A` (selected option) | **13.13:1** | Pass |
+| `--ink-muted #ABB4B9` on `--surface-0` / `--surface-1` / `--surface-2` | **8.26 / 8.96 / 7.18:1** | Pass |
+| `--success #3FBF80` on `--surface-0` / on `--success-soft` | **7.44:1** / **5.74:1** | Pass |
+| `--warning #E5A93A` on `--surface-0` / on `--warning-soft` | **8.34:1** / **7.01:1** | Pass |
+| `--danger #F2708B` on `--surface-0` / on `--danger-soft` | **6.19:1** / **5.88:1** | Pass |
+| `--info #6FB2F5` on `--surface-0` / on `--info-soft` | **7.76:1** / **6.85:1** | Pass |
+| `.level-chip` ink `--surface-1 #111111` on tier solids (trainee/junior/middle/senior) | **9.15 / 9.21 / 9.05 / 6.71:1** | Pass |
+| Tier inks on tier softs (trainee/junior/middle/senior) | **7.23 / 6.54 / 7.01 / 5.88:1** | Pass |
+| Tier bar fills on `--surface-2 #262626` | **7.34 / 7.38 / 7.26 / 5.38:1** | Pass (>=3) |
+
+### Colors that were darkened, and why
+
+| Token | Brand value | Shipped value | Reason |
+| --- | --- | --- | --- |
+| `--accent-ink` (light) | `#FF865C` | **`#B84520`** | The brand coral as TEXT on white is **2.38:1**. Darkened from HSL L 68% to 42% and desaturated 100% to 70%, hue held at 15.5 degrees so it stays the brand hue and does not drift into `--color-red`. Result: **5.37:1** on white, **5.08:1** on `--surface-1`, **4.83:1** on `--accent-soft` — all clear AA. |
+| `--brand-ring` (light) | `#FF865C` | **`#B84520`** | Same computation, same value: the raw coral is **2.38:1** on white and fails even the 3:1 non-text threshold for a focus indicator. |
+| `--danger` (all themes) | `#FF3333` (`--color-red`) | **`#C0243C`** | The brand red is **3.64:1** on white — fine as a graphic, a fail as text. Error text must be readable, so the darker crimson stays. |
+| `--tier-middle` | n/a (product color) | `#8A5E00` | Pre-existing: darkened from `#B07908` (**3.76:1**). |
+
+Nothing was darkened in the dark theme: on `#111111` / `#1A1A1A` the true `#FF865C` already measures
+7.93:1 / 7.31:1, so the accent ships at its exact brand value there.
 
 ### Failures and constrained usage — read this
 
-1. **`--accent #E4610F` with white text = 3.49:1 — FAILS AA for normal text.** It passes AA for
-   large text (≥3:1) and for non-text/graphical use. Therefore `.btn--accent` uses
-   `--accent-hover #C24F09` (**4.76:1**, passes) as its *resting* fill and moves to `#E4610F` only on
-   hover, where a large semibold label is already above the large-text threshold. Never put 14px or
-   16px regular white text on `#E4610F`.
-2. **`--accent #E4610F` as text on white = 3.49:1 — FAILS AA.** Use `--accent-ink #A8430A`
-   (**6.05:1** on white, **5.37:1** on `--accent-soft`) for any accent-colored text or link.
-3. **Borders are not text.** `--border #DCE3EC` measures 1.29:1 and `--border-strong #C2CCD9`
-   measures 1.62:1 against white. These are decorative hairlines only. Every control whose
-   *state* is conveyed by its outline — the answer option, inputs — additionally carries a
-   ≥3:1 boundary in its active states (`--brand-primary` 8.17:1, `--success` 5.43:1,
-   `--danger` 5.90:1) plus a non-color indicator.
-4. **Never color-only.** Correct/incorrect answers carry a check/cross glyph and a text badge;
-   tiers carry their name; the timer's critical state thickens its border under reduced motion;
+1. **`--accent #FF865C` is a FILL-ONLY color in the light theme.** On white it is **2.38:1**: it
+   fails AA as text (4.5:1), fails as large text (3:1) and fails as a non-text graphic (3:1).
+   Permitted: as a background under `--accent-on-fill #111111` (**7.93:1**), and as a decorative
+   inset bar or tint where a compliant near-black border carries the state.
+2. **Never put white text on the coral.** `#FFFFFF` on `#FF865C` is **2.38:1**. testfort.com's own
+   `.btn.orange` does exactly this (its `.btn span` stays `#FFFFFF`); the app deliberately does not
+   reproduce that, and uses `--accent-on-fill #111111` instead.
+3. **The coral is not the progress fill.** `#FF865C` on `--surface-2 #EDF1F7` is **2.10:1** and
+   fails the 3:1 requirement for a meaningful graphic, so `.progress__fill` stays on
+   `--brand-primary` (**16.66:1**). Same reason `accent-color` on the radio inputs stays near-black.
+4. **A near-black link needs its underline.** `--brand-primary` on white is 18.88:1 for legibility,
+   but it is indistinguishable in hue from body copy, so `a` carries a permanent underline
+   (WCAG 1.4.1 Use of Color) and shifts to `--accent-ink` on hover.
+5. **Borders are not text.** `--border #DCE3EC` measures 1.29:1 and `--border-strong #C2CCD9`
+   measures 1.62:1 against white. These are decorative hairlines only. Every control whose *state*
+   is conveyed by its outline — the answer option, inputs — additionally carries a >=3:1 boundary in
+   its active states (`--brand-primary` **18.88:1**, `--success` 5.43:1, `--danger` 5.90:1) plus a
+   non-color indicator.
+6. **Never color-only.** Correct/incorrect answers carry a check/cross glyph and a text badge;
+   tiers carry their name; hovered and selected options differ in hue *and* carry an inset bar;
    the anti-cheat banner carries an icon plus explicit "2 of 3" wording.
-5. **Focus is always visible.** `--brand-ring` at 2px with a 2px offset clears 3:1 against white
-   (4.78:1) and against `--surface-1` (3.68:1). Do not remove `:focus-visible` outlines.
-6. **Touch targets.** Buttons are ≥44px tall, answer options ≥56px, the modal close button is 32px
-   visually but should be padded to a 44px hit area on touch pointers.
+7. **Focus is always visible.** `--brand-ring` at 2px with a 2px offset clears 3:1 against every
+   surface in both themes (tables above). Do not remove `:focus-visible` outlines. `--shadow-focus`
+   is a decorative coral glow only — the compliant signal is the ring plus the border change.
+8. **Touch targets.** Buttons are >=44px tall (matching the brand's own 44px `.btn` line-height),
+   answer options >=56px, the modal close button is 32px visually but should be padded to a 44px hit
+   area on touch pointers.
 
 ---
 
-## 10. Reskin checklist
+## 10. Maintenance checklist
 
-When the real TestFort style guide arrives:
+The brand colors are now real, read from testfort.com on 2026-09-06. If the style guide moves:
 
-1. Replace the six values in the `BRAND SWAP POINTS` block (§3) and the corresponding six in both
-   dark-theme blocks (§4).
-2. Re-run the contrast check for: primary-on-white, white-on-primary, white-on-accent-fill,
-   accent-as-text-on-white, and focus ring on both surfaces.
-3. If the real accent is lighter than `#C24F09`, derive a darker `--accent-hover` for the button
-   fill rather than lowering the contrast requirement.
-4. Swap `--font-sans` / `--font-display` if the brand mandates a licensed face; keep the fallback
-   chain intact and re-check the 14px/12px steps for legibility in the new face.
-5. Leave the four tier colors alone unless they clash with the new primary — they are tuned for
-   AA at both solid and soft weights, and the amber in particular has little headroom.
+1. Replace the six values in the `BRAND SWAP POINTS` block (section 3) and their counterparts in
+   both dark-theme blocks (section 4) — the two dark blocks are duplicates and must stay identical.
+2. Re-run the contrast script over: on-primary/primary, primary-as-link on both light surfaces,
+   `--accent-on-fill` on `--accent`, `--accent-ink` on white and on `--accent-soft`, and
+   `--brand-ring` against all four light surfaces plus the primary fill.
+3. **Any new accent must be re-tested as a fill, as text and as a graphic separately.** A color can
+   pass one and fail the others — `#FF865C` passes only as a fill.
+4. If an accent fails as text, darken it by lowering HSL lightness while holding hue, and desaturate
+   only as far as needed to keep it distinct from `--danger`. Never lower the contrast requirement.
+5. The typeface question (section 5) is still open: brand = Poppins, app = Inter.
+6. Leave the four tier colors and the semantic colors alone unless they clash with the new primary —
+   they are tuned for AA at both solid and soft weights, and the amber has little headroom.

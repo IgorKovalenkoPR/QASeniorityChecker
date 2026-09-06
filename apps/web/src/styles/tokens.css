@@ -1,55 +1,78 @@
 /*
  * Design tokens for the QA Seniority Checker.
  *
- * Generated from docs/design-system.md, which is the source of truth. The six
- * values in the BRAND SWAP POINTS block are inferred, not read from
- * testfort.com (the site was not reachable from the build environment) - replace
- * them with the real TestFort style-guide hexes and the whole app rethemes.
+ * Generated from docs/design-system.md, which is the source of truth.
+ *
+ * BRAND SOURCE: the values in the BRAND SWAP POINTS block are the REAL TestFort
+ * brand colors, extracted from the CSS custom properties served by
+ * testfort.com on 2026-09-06:
+ *   --color-black #111111 · --color-grey #464646 · --color-light #E6EEF3
+ *   --color-red #FF3333 · --color-white #FFFFFF · --color-yellow #FF865C
+ *   (--color-yellow is named "yellow" but is in fact the coral accent)
+ *   --wp--preset--color--{orange #FF865C, dark-gray #464646,
+ *                         light-gray #E6EEF3, lite-dark #E4E4E4}
+ *   --tf-card-hover-bg #545454 (dark card) / #f6f9fb (light card)
+ * Button rules read off the same stylesheet: .btn is #111111 with a #FFFFFF
+ * 18px/500 label and border-radius 200px; .btn.orange swaps in a
+ * linear-gradient(90deg, #FF865C, #FF8A59).
+ *
+ * Nothing below is inferred. Every derived value is computed from those hexes
+ * and validated against WCAG 2.1 — see docs/design-system.md §9 for the ratios.
+ *
+ * ONE CONSTRAINT DRIVES THE WHOLE MAPPING: #FF865C on white is 2.38:1. The
+ * coral may be a FILL under near-black text (7.93:1) but never a text or
+ * graphical color on a light surface. That is why --brand-primary is the brand
+ * black, not the coral.
  */
 
 :root {
   /* ==================================================================
-     BRAND SWAP POINTS — the ONLY six values to replace with the real
-     TestFort style-guide colors. Everything below derives from these.
-     Current values are INFERRED, not read from testfort.com.
+     BRAND SWAP POINTS — the six values that carry the TestFort identity.
+     Everything below derives from these. Values are REAL, read from the
+     CSS variables served by testfort.com on 2026-09-06.
      ================================================================== */
-  --brand-primary:        #12508F;  /* corporate blue — buttons, links, focus  */
-  --brand-primary-hover:  #0E3F72;  /* ~12% darker                             */
-  --brand-primary-active: #0B3159;  /* ~20% darker, pressed state              */
-  --brand-primary-tint:   #E9F1FA;  /* 6% primary over white — subtle fills    */
-  --accent:               #E4610F;  /* warm orange — one emphasis per screen   */
-  --ink-inverse-bg:       #0B1728;  /* dark navy — footer / dark sections      */
+  --brand-primary:        #111111;  /* brand --color-black; .btn fill, links, borders */
+  --brand-primary-hover:  #2E2E2E;  /* derived: one step along black→grey ramp        */
+  --brand-primary-active: #464646;  /* brand --color-grey; pressed state              */
+  --brand-primary-tint:   #E6EEF3;  /* brand --color-light; subtle fills              */
+  --accent:               #FF865C;  /* brand --color-yellow / orange — coral accent   */
+  --ink-inverse-bg:       #111111;  /* brand --color-black; footer / dark sections    */
   /* ================================================================== */
 
   /* --- Brand ramp (derived) --- */
-  --brand-tint-strong:    #CFE0F5;  /* borders on tinted surfaces              */
-  --brand-on-primary:     #FFFFFF;  /* text/icon color on a primary fill       */
-  --brand-ring:           #1A6FE0;  /* focus ring — brighter than primary      */
+  --brand-tint-strong:    #C6D6E0;  /* borders on tinted surfaces              */
+  --brand-on-primary:     #FFFFFF;  /* text/icon on a primary fill — 18.88:1   */
+  --brand-ring:           #B84520;  /* focus ring = accent darkened to clear 3:1
+                                       on every light surface (and 3.52:1 even
+                                       directly over the black CTA fill)       */
 
-  /* --- Accent ramp (derived) --- */
-  --accent-hover:         #C24F09;  /* use for accent FILLS carrying text      */
-  --accent-ink:           #A8430A;  /* accent as TEXT on light surfaces        */
-  --accent-soft:          #FDEFE4;  /* accent tinted background                */
-  --accent-soft-border:   #F6D2B4;
+  /* --- Accent ramp (derived) ---
+     The coral is a fill-only color in the light theme. */
+  --accent-on-fill:       #111111;  /* text/icon ON a coral fill — 7.93:1      */
+  --accent-hover:         #FF9E7C;  /* lighter coral for hover fills — 9.38:1  */
+  --accent-ink:           #B84520;  /* accent as TEXT on light surfaces — 5.37:1
+                                       (coral itself is 2.38:1 and is banned)  */
+  --accent-soft:          #FFF0EA;  /* accent tinted background                */
+  --accent-soft-border:   #FFD3C2;
 
-  /* --- Ink scale (3 steps) --- */
-  --ink-strong:           #0F1B2A;  /* headings, numbers, emphasis             */
-  --ink-body:             #2E3A4B;  /* body copy, answer text                  */
-  --ink-muted:            #5A6B80;  /* labels, meta, helper text, placeholders */
-  --ink-on-dark:          #E6EDF6;  /* body text inside dark sections          */
-  --ink-muted-on-dark:    #9FB0C4;
+  /* --- Ink scale (3 steps) — neutral, matching the brand black/grey --- */
+  --ink-strong:           #111111;  /* brand black — headings, numbers         */
+  --ink-body:             #464646;  /* brand grey — body copy, answer text     */
+  --ink-muted:            #666666;  /* labels, meta, helper text, placeholders */
+  --ink-on-dark:          #E6EEF3;  /* brand light — body text on dark         */
+  --ink-muted-on-dark:    #ABB4B9;
 
   /* --- Surface scale (3 steps) --- */
-  --surface-0:            #FFFFFF;  /* cards, modals, elevated content         */
-  --surface-1:            #F7F9FC;  /* page background                         */
+  --surface-0:            #FFFFFF;  /* brand --color-white; cards, modals      */
+  --surface-1:            #F6F9FB;  /* brand light-card bg; page background    */
   --surface-2:            #EDF1F7;  /* inset wells, disabled fills, track bg   */
   --surface-inverse:      var(--ink-inverse-bg);
-  --surface-inverse-2:    #132339;  /* raised block inside a dark section      */
+  --surface-inverse-2:    #1F1F1F;  /* raised block inside a dark section      */
 
   /* --- Borders --- */
   --border:               #DCE3EC;  /* default hairline                        */
   --border-strong:        #C2CCD9;  /* inputs, interactive outlines            */
-  --border-inverse:       #2A3B52;
+  --border-inverse:       #333333;
 
   /* --- Semantic --- */
   --success:              #12794C;
@@ -136,19 +159,22 @@
   /* --- Radius --- */
   --radius-xs:   4px;
   --radius-sm:   6px;
-  --radius-md:   8px;   /* buttons, inputs                    */
+  --radius-md:   8px;   /* inputs                             */
   --radius-lg:   12px;  /* answer options, small cards        */
   --radius-xl:   16px;  /* question card, modal               */
   --radius-2xl:  24px;  /* hero / result panel                */
-  --radius-pill: 999px; /* chips, progress track, tier badge  */
+  --radius-pill: 999px; /* buttons (brand .btn = 200px), chips,
+                           progress track, tier badge         */
 
-  /* --- Shadows (cool-tinted, low and wide) --- */
-  --shadow-xs: 0 1px 2px rgba(15, 27, 42, 0.06);
-  --shadow-sm: 0 1px 3px rgba(15, 27, 42, 0.08), 0 1px 2px rgba(15, 27, 42, 0.04);
-  --shadow-md: 0 4px 12px rgba(15, 27, 42, 0.08), 0 1px 3px rgba(15, 27, 42, 0.04);
-  --shadow-lg: 0 12px 32px rgba(15, 27, 42, 0.12), 0 2px 8px rgba(15, 27, 42, 0.06);
-  --shadow-xl: 0 24px 64px rgba(15, 27, 42, 0.18), 0 4px 12px rgba(15, 27, 42, 0.08);
-  --shadow-focus: 0 0 0 3px rgba(26, 111, 224, 0.35);
+  /* --- Shadows (neutral black, low and wide) --- */
+  --shadow-xs: 0 1px 2px rgba(17, 17, 17, 0.06);
+  --shadow-sm: 0 1px 3px rgba(17, 17, 17, 0.08), 0 1px 2px rgba(17, 17, 17, 0.04);
+  --shadow-md: 0 4px 12px rgba(17, 17, 17, 0.08), 0 1px 3px rgba(17, 17, 17, 0.04);
+  --shadow-lg: 0 12px 32px rgba(17, 17, 17, 0.12), 0 2px 8px rgba(17, 17, 17, 0.06);
+  --shadow-xl: 0 24px 64px rgba(17, 17, 17, 0.18), 0 4px 12px rgba(17, 17, 17, 0.08);
+  /* Decorative reinforcement only: the compliant focus signal is the
+     --brand-primary border change (18.88:1) plus the --brand-ring outline. */
+  --shadow-focus: 0 0 0 3px rgba(184, 69, 32, 0.30);
 
   /* --- Layout --- */
   --container-max: 1200px;
@@ -165,31 +191,37 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --brand-primary:        #2F72C4;
-    --brand-primary-hover:  #3D82D6;
-    --brand-primary-active: #2865B0;
-    --brand-primary-tint:   #12293F;
-    --brand-tint-strong:    #1D3E5D;
-    --brand-ring:           #6FB2F5;
+    /* --- Brand ramp inverts: the black pill becomes a white pill --- */
+    --brand-primary:        #FFFFFF;  /* brand --color-white — inverse CTA fill  */
+    --brand-primary-hover:  #E6EEF3;  /* brand --color-light                     */
+    --brand-primary-active: #D2DEE5;  /* derived, one step darker                */
+    --brand-primary-tint:   #262626;  /* neutral raised fill                     */
+    --brand-tint-strong:    #454545;  /* ~brand --color-grey                     */
+    --brand-on-primary:     #111111;  /* brand black on the white pill — 18.88:1 */
+    --brand-ring:           #FF865C;  /* the true coral is legible on dark: 7.31:1
+                                         on --surface-0, 6.35:1 on --surface-2   */
 
-    --accent:               #FF8A3D;
-    --accent-hover:         #FF9E5C;
-    --accent-ink:           #FF8A3D;
-    --accent-soft:          #351C0C;
-    --accent-soft-border:   #6B3A16;
+    /* --- Accent ramp: on dark the coral needs no darkening --- */
+    --accent:               #FF865C;
+    --accent-on-fill:       #111111;  /* a coral fill ALWAYS carries black ink   */
+    --accent-hover:         #FF9E7C;
+    --accent-ink:           #FF865C;  /* 7.31:1 on --surface-0                   */
+    --accent-soft:          #33201A;
+    --accent-soft-border:   #6B3A2A;
 
-    --ink-strong:           #F2F6FB;
-    --ink-body:             #D5DFEC;
-    --ink-muted:            #9FB0C4;
+    /* --- Ink + surfaces go neutral: the brand's dark is black, not navy --- */
+    --ink-strong:           #FFFFFF;
+    --ink-body:             #E6EEF3;  /* brand --color-light                     */
+    --ink-muted:            #ABB4B9;
 
-    --surface-0:            #142235;
-    --surface-1:            #0B1728;
-    --surface-2:            #1B2C43;
-    --surface-inverse:      #F7F9FC;
+    --surface-0:            #1A1A1A;
+    --surface-1:            #111111;  /* brand --color-black                     */
+    --surface-2:            #262626;
+    --surface-inverse:      #F6F9FB;
     --surface-inverse-2:    #EDF1F7;
 
-    --border:               #2A3B52;
-    --border-strong:        #3A4E68;
+    --border:               #333333;
+    --border-strong:        #545454;  /* brand --tf-card-hover-bg (dark card)    */
 
     --success:              #3FBF80;
     --success-soft:         #10352A;
@@ -228,36 +260,42 @@
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
     --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-focus: 0 0 0 3px rgba(111, 178, 245, 0.4);
+    --shadow-focus: 0 0 0 3px rgba(255, 134, 92, 0.35);
   }
 }
 
 [data-theme="dark"] {
-  --brand-primary:        #2F72C4;
-  --brand-primary-hover:  #3D82D6;
-  --brand-primary-active: #2865B0;
-  --brand-primary-tint:   #12293F;
-  --brand-tint-strong:    #1D3E5D;
-  --brand-ring:           #6FB2F5;
+  /* --- Brand ramp inverts: the black pill becomes a white pill --- */
+  --brand-primary:        #FFFFFF;  /* brand --color-white — inverse CTA fill  */
+  --brand-primary-hover:  #E6EEF3;  /* brand --color-light                     */
+  --brand-primary-active: #D2DEE5;  /* derived, one step darker                */
+  --brand-primary-tint:   #262626;  /* neutral raised fill                     */
+  --brand-tint-strong:    #454545;  /* ~brand --color-grey                     */
+  --brand-on-primary:     #111111;  /* brand black on the white pill — 18.88:1 */
+  --brand-ring:           #FF865C;  /* the true coral is legible on dark: 7.31:1
+                                       on --surface-0, 6.35:1 on --surface-2   */
 
-  --accent:               #FF8A3D;
-  --accent-hover:         #FF9E5C;
-  --accent-ink:           #FF8A3D;
-  --accent-soft:          #351C0C;
-  --accent-soft-border:   #6B3A16;
+  /* --- Accent ramp: on dark the coral needs no darkening --- */
+  --accent:               #FF865C;
+  --accent-on-fill:       #111111;  /* a coral fill ALWAYS carries black ink   */
+  --accent-hover:         #FF9E7C;
+  --accent-ink:           #FF865C;  /* 7.31:1 on --surface-0                   */
+  --accent-soft:          #33201A;
+  --accent-soft-border:   #6B3A2A;
 
-  --ink-strong:           #F2F6FB;
-  --ink-body:             #D5DFEC;
-  --ink-muted:            #9FB0C4;
+  /* --- Ink + surfaces go neutral: the brand's dark is black, not navy --- */
+  --ink-strong:           #FFFFFF;
+  --ink-body:             #E6EEF3;  /* brand --color-light                     */
+  --ink-muted:            #ABB4B9;
 
-  --surface-0:            #142235;
-  --surface-1:            #0B1728;
-  --surface-2:            #1B2C43;
-  --surface-inverse:      #F7F9FC;
+  --surface-0:            #1A1A1A;
+  --surface-1:            #111111;  /* brand --color-black                     */
+  --surface-2:            #262626;
+  --surface-inverse:      #F6F9FB;
   --surface-inverse-2:    #EDF1F7;
 
-  --border:               #2A3B52;
-  --border-strong:        #3A4E68;
+  --border:               #333333;
+  --border-strong:        #545454;  /* brand --tf-card-hover-bg (dark card)    */
 
   --success:              #3FBF80;
   --success-soft:         #10352A;
@@ -296,5 +334,5 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
   --shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.65), 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-focus: 0 0 0 3px rgba(111, 178, 245, 0.4);
+  --shadow-focus: 0 0 0 3px rgba(255, 134, 92, 0.35);
 }
