@@ -79,6 +79,28 @@ CREATE TABLE IF NOT EXISTS attempt_reinstatements (
   reinstated_at    INTEGER NOT NULL
 );
 
+-- Outbox for the Google Spreadsheet export. Rows are queued when an attempt is
+-- scored and marked sent only once Google has acknowledged them, so a crash
+-- mid-flush retries rather than skips. They are queued whether or not
+-- credentials are configured: turning the service account on later drains
+-- everything queued since the first attempt.
+CREATE TABLE IF NOT EXISTS sheet_exports (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  -- One row per attempt: re-scoring after a reinstatement replaces the queued
+  -- row rather than adding a second one.
+  attempt_id  TEXT NOT NULL UNIQUE REFERENCES attempts(id) ON DELETE CASCADE,
+  -- The finished row, built at enqueue time so a later change to the column
+  -- layout cannot silently rewrite history.
+  row_json    TEXT NOT NULL,
+  queued_at   INTEGER NOT NULL,
+  sent_at     INTEGER,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  last_error  TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_sheet_exports_pending
+  ON sheet_exports (sent_at, id);
+
 CREATE TABLE IF NOT EXISTS attempt_results (
   attempt_id  TEXT PRIMARY KEY REFERENCES attempts(id) ON DELETE CASCADE,
   level       TEXT NOT NULL,

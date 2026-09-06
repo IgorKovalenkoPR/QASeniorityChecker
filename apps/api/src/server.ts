@@ -14,6 +14,7 @@ import type { Db } from './db.js';
 import { registerAuthRoutes } from './authRoutes.js';
 import type { CodeExchanger } from './auth.js';
 import { registerAdminRoutes, registerRoutes } from './routes.js';
+import { startExportFlusher } from './sheetOutbox.js';
 
 export interface AppDeps {
   /**
@@ -95,6 +96,14 @@ const isEntrypoint =
 
 if (isEntrypoint) {
   const app = buildApp();
+
+  // Started here rather than in buildApp so the test suite does not acquire a
+  // background timer per app it builds. Rows queue with or without
+  // credentials; this only drains them.
+  startExportFlusher(getDatabase(), (message, detail) => {
+    if (detail === undefined) app.log.info(message);
+    else app.log.warn(detail, message);
+  });
   app
     .listen({ port: config.port, host: config.host })
     .then(() => {

@@ -214,6 +214,10 @@ being regenerated, or variant generation stopped being deterministic.
 | `QASC_SESSION_SECRET` | *generated in dev* | **Required in production**, >= 32 chars |
 | `QASC_SESSION_TTL_SECONDS` | `43200` | How long a sign-in lasts (12 h) |
 | `QASC_PUBLIC_URL` | *derived from the request* | Set when the derived origin is not the registered one |
+| `QASC_SHEET_ID` | *unset* | Spreadsheet to append results to. Unset = queue but do not send |
+| `QASC_SHEET_TAB` | `Attempts` | Tab name. Must already exist |
+| `QASC_GOOGLE_SERVICE_ACCOUNT_JSON` | *unset* | The service account key, whole JSON blob |
+| `QASC_SHEET_FLUSH_SECONDS` | `30` | How often the outbox is drained |
 
 `QASC_OPTION_SECRET` must be stable for the lifetime of an attempt: rotating it mid-test invalidates
 the option ids of every paper in flight. The process refuses to start in production without it.
@@ -303,6 +307,58 @@ cannot be replayed after the fact.
 A terminated attempt is never scored, so it has no row in `attempt_results` and `/result` returns
 404 for it. The answers themselves are kept in `attempt_answers` whatever the status, so nothing is
 ever actually lost.
+
+### Results in a Google Spreadsheet
+
+A scored attempt is appended to a spreadsheet as one row, the way a Google Form fills a sheet.
+This also changes what the database is for: if the sheet holds the results, SQLite only has to
+survive the half hour of an attempt in progress, which is the difference between needing a paid
+persistent disk and not.
+
+That makes a lost row unacceptable, so nothing appends inline from a request handler. Scoring
+writes to a `sheet_exports` outbox table and a flusher drains it every
+`QASC_SHEET_FLUSH_SECONDS`. Three properties follow:
+
+- **Rows are queued whether or not credentials are configured.** Bringing the URL up before the
+  service account exists loses nothing: setting `QASC_SHEET_ID` and
+  `QASC_GOOGLE_SERVICE_ACCOUNT_JSON` later drains everything queued since the first attempt.
+- **A row is marked sent only once Google has acknowledged it**, so a crash mid-flush retries
+  rather than skips, and a failed batch is never recorded as sent.
+- **One row per attempt.** Re-scoring after a reinstatement replaces the queued row instead of
+  adding a second one, so nobody appears twice.
+
+A transport failure or a 5xx is retried indefinitely. A 4xx is not: a wrong spreadsheet id, or a
+sheet nobody shared with the service account, would otherwise hide behind a queue that only
+grows. The row stays queued and its `last_error` says it will not be retried.
+
+#### What to create
+
+1. In the Google Cloud console, **IAM & Admin -> Service Accounts -> Create service account**. No
+   roles are needed - the access comes from sharing the sheet, not from a project role.
+2. On that account, **Keys -> Add key -> Create new key -> JSON**. Download it.
+3. Enable the **Google Sheets API** for the project (**APIs & Services -> Library**).
+4. Create the spreadsheet, and add a tab named `Attempts` (or set
+   `QASC_SHEET_TAB`). Leave it empty: the first export writes the header row itself.
+5. **Share the spreadsheet with the service account's email** (the `client_email` in the
+   JSON, ending `.iam.gserviceaccount.com`) as an **Editor**. This is the step that is easy
+   to miss and it produces a 403 that the export deliberately does not retry.
+6. Set `QASC_SHEET_ID` to the long id from the spreadsheet URL, and paste the whole JSON
+   file into `QASC_GOOGLE_SERVICE_ACCOUNT_JSON`.
+
+#### Checking that it is working
+
+The export is the one part of the system whose failure is invisible from the outside: every
+attempt looks fine and the sheet quietly stops growing. So it reports on itself:
+
+```
+GET  /api/admin/sheet-exports         # configured?, counts, and the rows that are failing
+POST /api/admin/sheet-exports/flush   # drain now instead of waiting for the next tick
+```
+
+The columns are one per number rather than a blob per attempt, so the sheet can be sorted and
+pivoted without parsing a cell. It carries the per-tier percentages alongside the rung on
+purpose: the ladder is cumulative and a single low-tier miss caps the result, so the tiers are
+what tell you whether a rung means what it looks like.
 
 ### Overturning a termination
 
