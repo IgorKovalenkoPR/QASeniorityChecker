@@ -162,6 +162,24 @@ npm run dev
 npm run build && npm start
 ```
 
+### With Docker
+
+```bash
+export QASC_OPTION_SECRET=$(openssl rand -hex 32)   # keep this value; see below
+docker compose up --build
+```
+
+One container: the API serves the prebuilt SPA on the same origin, so there is no
+cross-origin request to configure. Attempts live in a named volume mounted at
+`/app/data` — without it, a redeploy discards the results of anyone mid-review.
+
+Compose refuses to start when `QASC_OPTION_SECRET` is unset rather than inventing
+one, because a value that changes between deploys invalidates the option ids of
+every attempt in flight.
+
+The image runs the API directly instead of the root `npm start`: that script
+rebuilds the SPA first, and the build tooling is pruned from the runtime image.
+
 ```bash
 npm test               # 81 tests
 npm run typecheck
