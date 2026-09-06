@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Tier } from '@qasc/core';
+import { useI18n } from '../lib/i18n.js';
 
 export const TIER_LABELS: Record<Tier, string> = {
   trainee: 'Trainee',
@@ -12,15 +13,6 @@ export const TIER_LABELS: Record<Tier, string> = {
  * Рівні лишаються англійськими: це власні назви щаблів компанії з таблиці
  * Performance Review, і саме так їх називають на самому review.
  */
-
-export const SOURCE_LABELS: Record<string, string> = {
-  'pr-matrix': 'Performance Review',
-  'istqb-ctfl': 'ISTQB Foundation',
-  'istqb-ctal-ta': 'ISTQB Test Analyst',
-  'istqb-ctal-tm': 'ISTQB Test Manager',
-  'istqb-glossary': 'Глосарій ISTQB',
-  'practice-dump': 'Практика',
-};
 
 export function Card({
   children,
@@ -43,6 +35,7 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
 }
 
 export function Progress({ answered, total }: { answered: number; total: number }) {
+  const { t } = useI18n();
   const percent = total === 0 ? 0 : Math.round((answered / total) * 100);
   return (
     <div className="progress">
@@ -52,12 +45,12 @@ export function Progress({ answered, total }: { answered: number; total: number 
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={answered}
-        aria-label="Відповіді надано"
+        aria-label={t('test.answeredAria')}
       >
         <div className="progress__fill" style={{ width: `${percent}%` }} />
       </div>
       <span className="progress__label">
-        Відповіді: {answered} з {total}
+        {t('test.answered', { answered, total })}
       </span>
     </div>
   );

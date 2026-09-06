@@ -1,4 +1,6 @@
 import type { MetaResponse } from '../lib/api.js';
+import { useI18n } from '../lib/i18n.js';
+import type { StringKey } from '../lib/i18n.js';
 import { Banner, Card } from '../components/ui.js';
 
 /**
@@ -7,23 +9,20 @@ import { Banner, Card } from '../components/ui.js';
  * Показується, поки кандидат не увійшов. Сенс не в тому, щоб когось не
  * пустити, а в тому, щоб результат був приєднаний до адреси, яку **підтвердив
  * Google**, а не до тієї, яку людина набрала руками - інакше результат
- * оцінювання неможливо покласти в чийсь Performance Review із певністью, що це
+ * оцінювання неможливо покласти в чийсь Performance Review із певністю, що це
  * та сама людина.
  */
 
 /** Причини відмови, які сервер повертає в `?auth_error=`. */
-const REASONS: Record<string, string> = {
-  auth_domain_not_allowed:
-    'Цей акаунт не належить до робочого домену компанії. Увійдіть, будь ласка, з робочої пошти.',
-  auth_email_unverified:
-    'Адреса цього акаунта не підтверджена в Google, тому пройти тест із неї не вийде.',
-  auth_state_mismatch:
-    'Сеанс входу втратив звʼязок із запитом - найчастіше це буває, коли сторінка довго висіла відкритою. Спробуйте ще раз.',
-  auth_missing_code: 'Google не повернув дані для входу. Спробуйте ще раз.',
-  access_denied: 'Вхід скасовано.',
-  auth_no_email: 'Google не повернув адресу пошти цього акаунта.',
-  auth_no_id_token: 'Google не завершив вхід. Спробуйте ще раз.',
-  auth_not_configured: 'Вхід через Google ще не налаштований на цьому сервері.',
+const REASON_KEYS: Record<string, StringKey> = {
+  auth_domain_not_allowed: 'auth.err.auth_domain_not_allowed',
+  auth_email_unverified: 'auth.err.auth_email_unverified',
+  auth_state_mismatch: 'auth.err.auth_state_mismatch',
+  auth_missing_code: 'auth.err.auth_missing_code',
+  access_denied: 'auth.err.access_denied',
+  auth_no_email: 'auth.err.auth_no_email',
+  auth_no_id_token: 'auth.err.auth_no_id_token',
+  auth_not_configured: 'auth.err.auth_not_configured',
 };
 
 export function SignInScreen({
@@ -33,28 +32,24 @@ export function SignInScreen({
   meta: MetaResponse | null;
   authError: string | null;
 }) {
+  const { t } = useI18n();
   const domains = meta?.auth.allowedEmailDomains ?? [];
-  const reason = authError
-    ? (REASONS[authError] ?? 'Не вдалося увійти. Спробуйте ще раз.')
-    : null;
+  const minutes = meta ? Math.round(meta.durationSeconds / 60) : 30;
+  const reason = authError ? t(REASON_KEYS[authError] ?? 'auth.err.unknown') : null;
 
   return (
     <div className="stack">
       {reason ? (
-        <Banner tone="danger" title="Вхід не вдався.">
+        <Banner tone="danger" title={t('signin.failed')}>
           {reason}
         </Banner>
       ) : null}
 
       <Card>
         <h1 style={{ fontSize: 'var(--fs-h1)', marginBottom: 'var(--sp-4)' }}>
-          Перевірте свій рівень сеньйорності
+          {t('signin.heading')}
         </h1>
-        <p className="muted">
-          Коротка самооцінка, яка визначає, де ви зараз перебуваєте на щаблях Performance Review
-          компанії - від Trainee− до Senior. Результат є відправною точкою для планування вашого
-          review, а не самим review.
-        </p>
+        <p className="muted">{t('signin.intro')}</p>
 
         <div style={{ marginTop: 'var(--sp-6)' }}>
           {/*
@@ -62,36 +57,26 @@ export function SignInScreen({
             Google, і пройти його має саме браузер верхнього рівня.
           */}
           <a className="btn btn--primary" href="/api/auth/google/start">
-            Увійти через Google
+            {t('signin.button')}
           </a>
         </div>
 
         <p className="small muted" style={{ marginTop: 'var(--sp-4)' }}>
-          {domains.length > 0 ? (
-            <>
-              Доступ лише для робочих акаунтів{' '}
-              <strong>{domains.map((d) => `@${d}`).join(', ')}</strong>. Ваш результат буде
-              приєднаний до цієї адреси.
-            </>
-          ) : (
-            <>Ваш результат буде приєднаний до адреси, з якою ви увійдете.</>
-          )}
+          {domains.length > 0
+            ? t('signin.domains', { domains: domains.map((d) => `@${d}`).join(', ') })
+            : t('signin.domainsAny')}
         </p>
       </Card>
 
       <Card>
-        <h2 className="card__title">Що вам знадобиться</h2>
+        <h2 className="card__title">{t('signin.needTitle')}</h2>
         <ul className="small muted" style={{ paddingLeft: 'var(--sp-5)' }}>
-          <li>
-            Приблизно {meta ? Math.round(meta.durationSeconds / 60) : 30} хвилин без переривань -
-            таймер працює на сервері і не ставиться на паузу.
-          </li>
-          <li>Одне вікно браузера на передньому плані: перемикання фіксуються.</li>
-          <li>Стабільний звʼязок. Короткий обрив не страшний, але тривалий завершить спробу.</li>
+          <li>{t('signin.need1', { minutes })}</li>
+          <li>{t('signin.need2')}</li>
+          <li>{t('signin.need3')}</li>
         </ul>
         <p className="small muted" style={{ marginTop: 'var(--sp-3)' }}>
-          Повні правила чесного проходження ви побачите на наступному екрані - до того, як
-          запуститься таймер.
+          {t('signin.rulesLater')}
         </p>
       </Card>
     </div>

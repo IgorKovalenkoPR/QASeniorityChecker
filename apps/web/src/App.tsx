@@ -9,6 +9,7 @@ import type {
   ResultResponse,
 } from './lib/api.js';
 import { AnswerQueue } from './lib/answerQueue.js';
+import { LocaleSwitch, useI18n } from './lib/i18n.js';
 import type { AnswerQueueStatus } from './lib/answerQueue.js';
 import { Proctor } from './lib/proctor.js';
 import { Banner, Card } from './components/ui.js';
@@ -57,6 +58,7 @@ function writeSession(session: StoredSession | null): void {
 type Phase = 'loading' | 'signin' | 'start' | 'test' | 'result' | 'terminated';
 
 export function App() {
+  const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>('loading');
   const [identity, setIdentity] = useState<Identity | null>(null);
   // Set by the OAuth callback when it refuses the sign-in, so the reason can be
@@ -177,7 +179,7 @@ export function App() {
       queueRef.current = new AnswerQueue({
         save: async (questionId, optionIds) => {
           const active = attemptRef.current;
-          if (!active) throw new ApiError(409, 'attempt_gone', 'Спроби вже немає.');
+          if (!active) throw new ApiError(409, 'attempt_gone', t('err.attemptGone'));
           return api.saveAnswer(active.id, active.token, questionId, [...optionIds]);
         },
         onStatus: setSaveStatus,
@@ -230,7 +232,7 @@ export function App() {
     proctorRef.current?.stop();
     proctorRef.current = null;
     discardQueue();
-    setTerminationReason(reason ?? 'Цю спробу завершено за правилами чесного проходження тесту.');
+    setTerminationReason(reason ?? t('term.default'));
     setPhase('terminated');
     writeSession(null);
   }, [discardQueue]);
@@ -265,7 +267,7 @@ export function App() {
           else if (verdict.strikes > 0) {
             // Only the cause. TestScreen appends the remaining-strike count, so
             // including it here too would print the sentence twice.
-            setWarning('Вихід зі сторінки тесту зафіксовано.');
+            setWarning(t('proctor.navAway'));
           }
         },
       },
@@ -340,7 +342,7 @@ export function App() {
         setWarning(null);
         setPhase('test');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Не вдалося почати тест.');
+        setError(err instanceof Error ? err.message : t('start.error'));
       } finally {
         setBusy(false);
       }
@@ -374,8 +376,7 @@ export function App() {
       const drained = await answerQueue().flush(8_000);
       if (!drained) {
         setError(
-          'Останні відповіді ще не збереглися - зʼєднання нестабільне. ' +
-            'Не закривайте сторінку: щойно звʼязок відновиться, натисніть «Завершити» ще раз.',
+          t('err.unsavedOnSubmit'),
         );
         setSubmitting(false);
         return;
@@ -390,7 +391,7 @@ export function App() {
       if (err instanceof ApiError && err.code === 'attempt_terminated') {
         terminate(err.message);
       } else {
-        setError(err instanceof Error ? err.message : 'Не вдалося завершити спробу.');
+        setError(err instanceof Error ? err.message : t('err.submit'));
       }
     } finally {
       setSubmitting(false);
@@ -418,17 +419,18 @@ export function App() {
     <div className="app">
       <header className="app__header">
         <div className="app__brand">
-          QA Seniority Checker <span>попередня оцінка перед Performance Review</span>
+          {t('app.name')} <span>{t('app.tagline')}</span>
         </div>
         <div className="app__header-right">
+          <LocaleSwitch />
           {phase === 'test' && attempt ? (
-            <span className="badge badge--neutral">Варіант {attempt.variantNumber}</span>
+            <span className="badge badge--neutral">{t('app.variant', { n: attempt.variantNumber })}</span>
           ) : null}
         </div>
       </header>
 
       <main className={`app__main ${phase === 'start' ? 'app__main--narrow' : ''}`.trim()}>
-        {phase === 'loading' ? <Card>Завантаження...</Card> : null}
+        {phase === 'loading' ? <Card>{t('app.loading')}</Card> : null}
 
         {phase === 'signin' ? <SignInScreen meta={meta} authError={authError} /> : null}
 
@@ -463,18 +465,16 @@ export function App() {
 
         {phase === 'terminated' ? (
           <Card hero>
-            <h1>Спробу завершено</h1>
-            <Banner tone="danger" title="Правила чесного проходження">
-              {terminationReason ?? 'Цю спробу завершено за правилами чесного проходження тесту.'}
+            <h1>{t('term.heading')}</h1>
+            <Banner tone="danger" title={t('term.rulesTitle')}>
+              {terminationReason ?? t('term.default')}
             </Banner>
             <p className="muted" style={{ marginTop: 'var(--sp-5)' }}>
-              Спробу не оцінено. Якщо ви вважаєте, що це помилка - системне сповіщення, дзвінок або
-              обрив зʼєднання - зверніться до керівника або QA-ліда: кожна подія записана з часовою
-              міткою і тривалістю, тож запис можна переглянути.
+              {t('term.body')}
             </p>
             <div className="row" style={{ marginTop: 'var(--sp-5)' }}>
               <button className="btn btn--primary" type="button" onClick={handleRestart}>
-                Повернутися на початок
+                {t('term.back')}
               </button>
             </div>
           </Card>
@@ -482,7 +482,7 @@ export function App() {
       </main>
 
       <footer className="app__footer">
-        Орієнтовний рівень - це відправна точка для розмови на Performance Review, а не рішення.
+        {t('app.footer')}
       </footer>
     </div>
   );

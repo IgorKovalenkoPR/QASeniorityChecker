@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { LocaleProvider } from './lib/i18n.js';
 import './styles/tokens.css';
 import './styles/app.css';
 
@@ -9,6 +10,8 @@ if (!container) throw new Error('Root container is missing from index.html');
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <LocaleProvider>
+      <App />
+    </LocaleProvider>
   </StrictMode>,
 );
