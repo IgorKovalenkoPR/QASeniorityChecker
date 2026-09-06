@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
@@ -65,7 +65,15 @@ export function buildTestApp(): { app: FastifyInstance; db: Db } {
   return { app: buildApp(db), db };
 }
 
-const isEntrypoint = process.argv[1] && import.meta.url === `file://${resolve(process.argv[1])}`;
+// pathToFileURL, not string-concatenating a file:// prefix onto resolve():
+// on Windows resolve() returns a drive path with backslash separators and no
+// leading slash, which never equals the three-slash POSIX form Node puts in
+// import.meta.url. The comparison was therefore always false on Windows, and
+// the process exited 0 without ever listening - so the API could not be run on
+// a Windows host at all. It only ever worked in Docker and CI, which is why
+// this went unnoticed.
+const isEntrypoint =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isEntrypoint) {
   const app = buildApp();

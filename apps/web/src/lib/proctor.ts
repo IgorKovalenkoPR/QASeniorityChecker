@@ -114,7 +114,8 @@ export class Proctor {
         e.preventDefault();
         this.record('print_attempt');
       }
-      // F12 / Ctrl+Shift+I are hints, not proof, and cost nothing by policy.
+      // F12 / Ctrl+Shift+I are hints, not proof. They are recorded and do carry
+      // a strike under the default policy, but a single one is not fatal.
       if (key === 'f12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'i' || key === 'j'))) {
         this.record('devtools_suspected');
       }

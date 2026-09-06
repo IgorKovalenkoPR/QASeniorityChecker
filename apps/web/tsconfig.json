@@ -11,5 +11,5 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"]
 }

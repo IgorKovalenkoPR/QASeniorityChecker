@@ -202,13 +202,70 @@ being regenerated, or variant generation stopped being deterministic.
 | `QASC_DB` | `data/qasc.db` | SQLite file |
 | `QASC_ATTEMPT_SECONDS` | `1800` | Wall-clock budget per attempt |
 | `QASC_HEARTBEAT_SECONDS` | `15` | Client ping period |
-| `QASC_HEARTBEAT_GRACE_SECONDS` | `45` | Silence tolerated before it becomes an event |
+| `QASC_HEARTBEAT_GRACE_SECONDS` | `120` | Silence tolerated before it becomes an event |
+| `QASC_REVEAL_ANSWERS_TO_CANDIDATE` | `false` | Whether a candidate's own result carries the answer key |
 | `QASC_OPTION_SECRET` | *generated in dev* | **Required in production**, ≥ 32 chars |
 | `QASC_ADMIN_TOKEN` | *unset* | Admin endpoints return 503 until set |
 | `QASC_CORS_ORIGIN` | `http://localhost:5173` | |
 
 `QASC_OPTION_SECRET` must be stable for the lifetime of an attempt: rotating it mid-test invalidates
 the option ids of every paper in flight. The process refuses to start in production without it.
+
+### Reading a finished attempt
+
+The candidate's result deliberately does **not** carry the answer key
+(`QASC_REVEAL_ANSWERS_TO_CANDIDATE` is `false` by default). They see their rung, the per-tier and
+per-competency breakdown, and which of the twenty questions counted - not the correct answers or
+the explanations. The reason is arithmetic: a variant is 20 questions out of 504 and the variant
+counter round-robins, so a reviewer-grade result screen shown to everyone is a slow, complete
+export of the bank to anyone holding the link.
+
+The reviewer's view lives behind `QASC_ADMIN_TOKEN`:
+
+```
+GET  /api/admin/attempts                   # roster, newest first, with the final rung
+GET  /api/admin/attempts/:id/result        # per-question detail, answers and explanations
+GET  /api/admin/attempts/:id/integrity     # the honesty event log, plus any reinstatement
+POST /api/admin/attempts/:id/reinstate     # overturn a false termination and score it
+```
+
+`/result` is the endpoint the pilot needs: without it you can see that somebody scored Middle but
+not which questions they missed, and the candidate's own token is stored only as a hash, so it
+cannot be replayed after the fact.
+
+A terminated attempt is never scored, so it has no row in `attempt_results` and `/result` returns
+404 for it. The answers themselves are kept in `attempt_answers` whatever the status, so nothing is
+ever actually lost.
+
+### Overturning a termination
+
+The proctor can be wrong, and `POST /api/admin/attempts/:id/reinstate` is how a reviewer says so.
+It takes a required `note` - overturning a termination is a judgement someone has to own in
+writing, because the reinstated attempt then sits in the roster next to clean ones.
+
+```bash
+curl -X POST "$BASE/api/admin/attempts/$ID/reinstate" \
+  -H "authorization: Bearer $QASC_ADMIN_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"note":"Wifi у переговорці впав; кандидат був на звʼязку зі мною."}'
+```
+
+It forgives the attempt's honesty events, scores the answers as they stand, and returns the full
+reviewer result together with a record of the decision. Three things are worth knowing:
+
+- **Forgiven, not deleted.** The events stay in `integrity_events` with `forgiven = 1` and are
+  still returned by the `/integrity` endpoint. They are only excluded from the verdict - which is
+  the part that matters, because the verdict is recomputed by replaying the whole log on every
+  report, so a log that still counted would write the terminating strikes straight back.
+- **It recovers the result, not the remaining time.** The candidate's browser discarded its session
+  when it was told the attempt was over, so there is no live test to resume. If they should get a
+  full run, start a fresh attempt.
+- **Read the coverage, not just the rung.** The response reports `answeredQuestions` against
+  `totalQuestions`. An attempt cut short at question three still produces a level, and that level
+  means nothing; the roster marks such attempts with `reinstated: 1` and the reviewer's note.
+
+Reinstatement is one-shot per attempt: a second call returns 409, since by then the attempt is
+submitted rather than terminated.
 
 ---
 
@@ -252,3 +309,31 @@ result line can be mapped back to the source.
 The estimated level is a **starting point for the Performance Review conversation, not a decision**.
 Twenty questions cannot cover 60 competency rows; the result page says so, and names the specific
 rows the paper actually touched.
+
+### The ladder is cumulative, and that has teeth
+
+Each row of the sheet names only its own colour and, at most, the one below - the Senior row says
+"red >= 50, and all Middle (yellow) items >= 75" and nothing about grey or green. Read row by row
+in isolation, that let a paper scoring 0% on Trainee and 0% on Junior be awarded **Senior** purely
+on its Middle and Senior answers. `resolveLevel` therefore walks the rungs upwards and stops at
+the first one that fails, so every rung carries the requirements of all the rungs beneath it. No
+threshold was changed to do this; the sheet's numbers are still the sheet's numbers.
+
+The consequence is worth knowing before you read pilot results, because the lower tiers are now
+hard gates and they are short:
+
+| Trainee score | Highest rung reachable | Junior score | Highest rung reachable |
+| --- | --- | --- | --- |
+| 0 / 4 | Trainee&minus; | 0-1 / 6 | Junior&minus; |
+| 1 / 4 | Trainee | 2 / 6 | Junior |
+| 2 / 4 | **Junior** | 3-4 / 6 | **Junior+** |
+| 3-4 / 4 | Senior | 5-6 / 6 | Senior |
+
+So two careless misses among the four Trainee questions cap an otherwise strong candidate at
+Junior, whatever they scored above. Across all 1225 score combinations the 4/6/6/4 blueprint can
+produce, this reading moves 320 of them (26%) down at least one rung, and none up.
+
+That is the correct behaviour for a ladder, but it puts real weight on the Trainee and Junior
+questions being unambiguous. **During the pilot, watch specifically for a strong tester capped by
+one or two low-tier misses** - that points at a bad question rather than a weak candidate, and the
+result page's "next rung" line names the exact tier and threshold that blocked them.

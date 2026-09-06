@@ -19,6 +19,15 @@ services:
       # request ever happens and the allow-list can stay empty.
       QASC_CORS_ORIGIN: ${QASC_CORS_ORIGIN:-}
       QASC_ATTEMPT_SECONDS: ${QASC_ATTEMPT_SECONDS:-1800}
+      # How long the server tolerates client silence before it records a gap.
+      # Deliberately generous: a VPN reconnect alone can outlast a short window,
+      # and a gap the candidate cannot see is a gap they cannot contest.
+      QASC_HEARTBEAT_SECONDS: ${QASC_HEARTBEAT_SECONDS:-15}
+      QASC_HEARTBEAT_GRACE_SECONDS: ${QASC_HEARTBEAT_GRACE_SECONDS:-120}
+      # Off by default. Turning this on shows every candidate the correct answers
+      # and the explanations for their twenty questions, which is enough to walk
+      # the whole 504-question bank out of the building a variant at a time.
+      QASC_REVEAL_ANSWERS_TO_CANDIDATE: ${QASC_REVEAL_ANSWERS_TO_CANDIDATE:-false}
     volumes:
       # The SQLite file holds every attempt and its integrity log. Without this
       # volume a redeploy discards the results of anyone mid-review.

@@ -12,7 +12,10 @@ import {
   authorizeAttempt,
   buildResult,
   detectHeartbeatGap,
+  getAttempt,
+  loadReinstatement,
   recordIntegrityEvents,
+  reinstateAttempt,
   requireLive,
   saveAnswer,
   startAttempt,
@@ -21,6 +24,15 @@ import {
 } from './attempts.js';
 import type { AttemptRow } from './attempts.js';
 import { buildPaper } from './paper.js';
+
+const reinstateBody = z.object({
+  /**
+   * Required, and not a free pass: overturning a termination is a judgement a
+   * reviewer has to own in writing, because the roster will show this attempt
+   * next to clean ones.
+   */
+  note: z.string().trim().min(3).max(500),
+});
 
 const startBody = z.object({
   candidateName: z.string().trim().min(2).max(120),
@@ -209,7 +221,9 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
     const { id } = request.params as { id: string };
     const attempt = authorizeAttempt(db, id, bearer(request));
     if (attempt.status === 'submitted') {
-      return reply.send(buildResult(db, attempt));
+      return reply.send(
+        buildResult(db, attempt, { revealAnswers: config.revealAnswersToCandidate }),
+      );
     }
     return reply.send(submitAttempt(db, attempt));
   });
@@ -224,7 +238,9 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
         'attempt_terminated',
       );
     }
-    return reply.send(buildResult(db, attempt));
+    return reply.send(
+      buildResult(db, attempt, { revealAnswers: config.revealAnswersToCandidate }),
+    );
   });
 }
 
@@ -254,9 +270,14 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db): void {
       .prepare(
         `SELECT a.id, a.candidate_name, a.candidate_email, a.variant_number, a.status,
                 a.started_at, a.finished_at, a.strikes, a.termination_reason,
-                r.level, r.correct, r.total, r.percent
+                r.level, r.correct, r.total, r.percent,
+                -- A reinstated attempt is not a clean run and must not read as
+                -- one in the roster.
+                CASE WHEN ri.attempt_id IS NULL THEN 0 ELSE 1 END AS reinstated,
+                ri.note AS reinstatement_note
            FROM attempts a
            LEFT JOIN attempt_results r ON r.attempt_id = a.id
+           LEFT JOIN attempt_reinstatements ri ON ri.attempt_id = a.id
           ORDER BY a.created_at DESC
           LIMIT ?`,
       )
@@ -266,10 +287,45 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db): void {
 
   app.get('/api/admin/attempts/:id/integrity', { preHandler: guard }, async (request) => {
     const { id } = request.params as { id: string };
+    // Forgiven events are included on purpose: this is the audit view, and the
+    // point of forgiving rather than deleting is that the record survives.
     const events = db
       .prepare('SELECT * FROM integrity_events WHERE attempt_id = ? ORDER BY id')
       .all(id);
-    return { events };
+    return { events, reinstatement: loadReinstatement(db, id) };
+  });
+
+  /**
+   * Overturn a false termination and score what the candidate answered.
+   *
+   * The proctor can be wrong. Before this existed, being wrong was final: the
+   * answers survived in the database but no endpoint could reach them, so the
+   * remedy was a hand-edit of SQLite inside the container.
+   */
+  app.post('/api/admin/attempts/:id/reinstate', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = reinstateBody.parse(request.body);
+    const attempt = getAttempt(db, id);
+    if (!attempt) {
+      return reply.code(404).send({ error: 'not_found', message: 'Такої спроби немає.' });
+    }
+    return reply.send(reinstateAttempt(db, attempt, body.note));
+  });
+
+  /**
+   * The reviewer's view of a finished attempt: which questions it got wrong,
+   * what the right answers were, and why. This is where the answer key lives
+   * once QASC_REVEAL_ANSWERS_TO_CANDIDATE is off, and it is also the only way
+   * to see the detail of an attempt at all - the candidate's own token is
+   * stored hashed, so it cannot be replayed after the fact.
+   */
+  app.get('/api/admin/attempts/:id/result', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const attempt = getAttempt(db, id);
+    if (!attempt) {
+      return reply.code(404).send({ error: 'not_found', message: 'Такої спроби немає.' });
+    }
+    return reply.send(buildResult(db, attempt, { revealAnswers: true }));
   });
 
   app.get('/api/admin/bank', { preHandler: guard }, async () => ({

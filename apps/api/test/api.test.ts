@@ -184,7 +184,12 @@ describe('taking the test', () => {
     expect(response.json().breakdown.level).toBe('trainee_minus');
   });
 
-  it('reveals the key and the explanations only after submission', async () => {
+  it('withholds the key and the explanations from the candidate by default', async () => {
+    // The bank is the expensive asset here: 504 written questions. With the
+    // review switched on, anyone holding the link could start an attempt,
+    // submit it untouched, read twenty correct answers, and start again - the
+    // variant round-robin hands out a fresh paper every time. So the candidate
+    // keeps their score and which questions they missed, never the answers.
     const started = await startAttempt();
     await answerAll(started, 5);
     const submitted = await app.inject({
@@ -193,8 +198,33 @@ describe('taking the test', () => {
       headers: started.auth,
     });
     const body = submitted.json();
-    expect(body.questions[0]).toHaveProperty('correctAnswer');
-    expect(body.questions[0]).toHaveProperty('explanation');
+    expect(body.answersRevealed).toBe(false);
+    expect(body.questions[0]).not.toHaveProperty('correctAnswer');
+    expect(body.questions[0]).not.toHaveProperty('explanation');
+    // What the candidate does keep: their own answer and whether it counted.
+    expect(body.questions[0]).toHaveProperty('correct');
+    expect(body.questions[0]).toHaveProperty('yourAnswer');
+    expect(body.breakdown).toBeDefined();
+  });
+
+  it('never ships the key on the result endpoint either', async () => {
+    const started = await startAttempt();
+    await answerAll(started, 5);
+    await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/submit`,
+      headers: started.auth,
+    });
+    const result = await app.inject({
+      method: 'GET',
+      url: `/api/attempts/${started.attempt.id}/result`,
+      headers: started.auth,
+    });
+    expect(result.json().answersRevealed).toBe(false);
+    // Checked against the raw payload, not the parsed object: the guarantee is
+    // about what crosses the wire.
+    expect(result.payload).not.toContain('correctAnswer');
+    expect(result.payload).not.toContain('explanation');
   });
 
   it('restores saved answers on resume', async () => {
@@ -263,19 +293,28 @@ describe('exam integrity', () => {
     expect(response.json().attempt.status).toBe('in_progress');
   });
 
-  it('warns on the first real absence and terminates on the second', async () => {
+  it('warns on ordinary absences and terminates on the fourth', async () => {
     const started = await startAttempt();
     const first = await report(started, [
       { type: 'visibility_hidden', occurredAt: Date.now() - 1000, durationMs: 3000 },
     ]);
     expect(first.json().verdict.terminate).toBe(false);
-    expect(first.json().verdict.remaining).toBe(1);
+    expect(first.json().verdict.remaining).toBe(3);
 
     const second = await report(started, [
+      { type: 'window_blur', occurredAt: Date.now() - 900, durationMs: 3000 },
+    ]);
+    expect(second.json().verdict.terminate).toBe(false);
+    expect(second.json().attempt.status).toBe('in_progress');
+
+    await report(started, [
+      { type: 'visibility_hidden', occurredAt: Date.now() - 800, durationMs: 3000 },
+    ]);
+    const fourth = await report(started, [
       { type: 'window_blur', occurredAt: Date.now(), durationMs: 3000 },
     ]);
-    expect(second.json().verdict.terminate).toBe(true);
-    expect(second.json().attempt.status).toBe('terminated');
+    expect(fourth.json().verdict.terminate).toBe(true);
+    expect(fourth.json().attempt.status).toBe('terminated');
   });
 
   it('terminates on a single long absence', async () => {
@@ -286,10 +325,24 @@ describe('exam integrity', () => {
     expect(response.json().attempt.status).toBe('terminated');
   });
 
-  it('terminates when the candidate navigates away', async () => {
+  it('survives a single navigation away, because that is what a reload looks like', async () => {
+    // pagehide fires on F5, on the back button and on browser crash recovery
+    // exactly as it does on a deliberate exit. The start screen tells the
+    // candidate the server-side timer survives a reload, so ending the attempt
+    // on the first pagehide failed people for an action they were allowed.
     const started = await startAttempt();
     const response = await report(started, [{ type: 'navigation_away', occurredAt: Date.now() }]);
-    expect(response.json().attempt.status).toBe('terminated');
+    expect(response.json().attempt.status).toBe('in_progress');
+    expect(response.json().verdict.strikes).toBe(1);
+  });
+
+  it('still terminates a candidate who keeps leaving the page', async () => {
+    const started = await startAttempt();
+    for (let i = 0; i < 3; i += 1) {
+      await report(started, [{ type: 'navigation_away', occurredAt: Date.now() - 100 * (3 - i) }]);
+    }
+    const last = await report(started, [{ type: 'navigation_away', occurredAt: Date.now() }]);
+    expect(last.json().attempt.status).toBe('terminated');
   });
 
   it('is idempotent: a replayed report does not double-count', async () => {
@@ -304,7 +357,10 @@ describe('exam integrity', () => {
 
   it('never scores a terminated attempt', async () => {
     const started = await startAttempt();
-    await report(started, [{ type: 'navigation_away', occurredAt: Date.now() }]);
+    // A 45-second absence is past the hard-terminate threshold on its own.
+    await report(started, [
+      { type: 'visibility_hidden', occurredAt: Date.now(), durationMs: 45_000 },
+    ]);
 
     const submit = await app.inject({
       method: 'POST',
@@ -330,7 +386,10 @@ describe('exam integrity', () => {
       payload: { events: [{ type: 'navigation_away', occurredAt: Date.now() }] },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().attempt.status).toBe('terminated');
+    // What this test is about is the unauthenticated beacon path, not the
+    // verdict: one pagehide is a recorded strike, not a termination.
+    expect(response.json().verdict.strikes).toBe(1);
+    expect(response.json().attempt.status).toBe('in_progress');
   });
 
   it('rejects a beacon carrying the wrong token', async () => {
@@ -349,12 +408,39 @@ describe('exam integrity', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it('turns client silence into an integrity event', async () => {
+  it('records client silence without ending the attempt over it', async () => {
+    // A three-minute gap is a reconnecting VPN, a sleeping laptop or hotel wifi
+    // far more often than it is a closed page - and it is the one signal the
+    // candidate cannot see happening and cannot argue with. Recorded, charged
+    // one strike, not fatal. This is the regression that mattered most: the gap
+    // used to be filed as a visibility_hidden carrying the whole gap as its
+    // duration, so any gap past the grace window was automatically past the
+    // hard-terminate threshold and ended the attempt outright.
     const started = await startAttempt();
-    // Simulate a client that stopped sending heartbeats for two minutes, which
-    // is what a patched or closed page looks like from the server side.
     db.prepare('UPDATE attempts SET last_seen_at = ? WHERE id = ?').run(
-      Date.now() - 120_000,
+      Date.now() - 180_000,
+      started.attempt.id,
+    );
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/heartbeat`,
+      headers: started.auth,
+    });
+    expect(response.json().attempt.status).toBe('in_progress');
+
+    const events = db
+      .prepare('SELECT type, server_derived FROM integrity_events WHERE attempt_id = ?')
+      .all(started.attempt.id) as { type: string; server_derived: number }[];
+    expect(events).toHaveLength(1);
+    const [gapEvent] = events;
+    expect(gapEvent?.type).toBe('heartbeat_gap');
+    expect(gapEvent?.server_derived).toBe(1);
+  });
+
+  it('terminates on silence long enough that nothing innocent explains it', async () => {
+    const started = await startAttempt();
+    db.prepare('UPDATE attempts SET last_seen_at = ? WHERE id = ?').run(
+      Date.now() - 400_000,
       started.attempt.id,
     );
     const response = await app.inject({
@@ -425,5 +511,297 @@ describe('admin endpoints', () => {
     expect(response.statusCode).toBe(503);
     await freshApp.close();
     freshDb.close();
+  });
+
+  it('gives the reviewer the per-question detail the candidate is denied', async () => {
+    // Without this the pilot cannot do the thing it exists for: the owner would
+    // see only the final rung, not which questions the person actually missed.
+    // The candidate token is stored hashed and cannot be replayed afterwards,
+    // so this endpoint is the only route to that detail after the fact.
+    process.env.QASC_ADMIN_TOKEN = 'test-admin-token';
+    const { app: adminApp, db: adminDb } = buildTestApp();
+    try {
+      const started = await adminApp.inject({
+        method: 'POST',
+        url: '/api/attempts',
+        payload: {
+          candidateName: 'Anna Tester',
+          candidateEmail: 'anna@example.com',
+          acceptedRules: true,
+        },
+      });
+      const body = started.json();
+      await adminApp.inject({
+        method: 'POST',
+        url: `/api/attempts/${body.attempt.id}/submit`,
+        headers: { authorization: `Bearer ${body.token}` },
+      });
+
+      const detail = await adminApp.inject({
+        method: 'GET',
+        url: `/api/admin/attempts/${body.attempt.id}/result`,
+        headers: { authorization: 'Bearer test-admin-token' },
+      });
+      expect(detail.statusCode).toBe(200);
+      expect(detail.json().answersRevealed).toBe(true);
+      expect(detail.json().questions[0]).toHaveProperty('correctAnswer');
+      expect(detail.json().questions[0]).toHaveProperty('explanation');
+    } finally {
+      delete process.env.QASC_ADMIN_TOKEN;
+      await adminApp.close();
+      adminDb.close();
+    }
+  });
+
+  it('refuses the reviewer detail endpoint without the admin token', async () => {
+    process.env.QASC_ADMIN_TOKEN = 'test-admin-token';
+    const { app: adminApp, db: adminDb } = buildTestApp();
+    try {
+      const response = await adminApp.inject({
+        method: 'GET',
+        url: '/api/admin/attempts/whatever/result',
+      });
+      expect(response.statusCode).toBe(401);
+    } finally {
+      delete process.env.QASC_ADMIN_TOKEN;
+      await adminApp.close();
+      adminDb.close();
+    }
+  });
+});
+
+describe('reinstating a falsely terminated attempt', () => {
+  const ADMIN = 'test-admin-token';
+  let adminApp: FastifyInstance;
+  let adminDb: Db;
+
+  beforeEach(() => {
+    process.env.QASC_ADMIN_TOKEN = ADMIN;
+    ({ app: adminApp, db: adminDb } = buildTestApp());
+  });
+
+  afterEach(async () => {
+    delete process.env.QASC_ADMIN_TOKEN;
+    await adminApp.close();
+    adminDb.close();
+  });
+
+  const adminAuth = { authorization: `Bearer ${ADMIN}` };
+
+  async function begin() {
+    const response = await adminApp.inject({
+      method: 'POST',
+      url: '/api/attempts',
+      payload: {
+        candidateName: 'Anna Tester',
+        candidateEmail: 'anna@example.com',
+        acceptedRules: true,
+      },
+    });
+    const body = response.json();
+    return { ...body, candidateAuth: { authorization: `Bearer ${body.token}` } };
+  }
+
+  async function answerCorrectly(started: any, howMany: number) {
+    const variant = VARIANT_BY_NUMBER.get(started.attempt.variantNumber)!;
+    let answered = 0;
+    for (const questionId of variant.questionIds) {
+      if (answered >= howMany) break;
+      const source = QUESTION_BY_ID.get(questionId)!;
+      const paper = started.questions.find((q: any) => q.id === questionId);
+      const optionIds = source.correctOptionIds.map((correctId) => {
+        const text = source.options.find((o) => o.id === correctId)!.text;
+        return paper.options.find((o: any) => o.text === text).id;
+      });
+      await adminApp.inject({
+        method: 'PUT',
+        url: `/api/attempts/${started.attempt.id}/answers`,
+        headers: started.candidateAuth,
+        payload: { questionId, optionIds },
+      });
+      answered += 1;
+    }
+    return answered;
+  }
+
+  /** A 45-second absence is past the hard-terminate threshold on its own. */
+  function condemn(started: any) {
+    return adminApp.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/integrity`,
+      headers: started.candidateAuth,
+      payload: {
+        events: [{ type: 'visibility_hidden', occurredAt: Date.now(), durationMs: 45_000 }],
+      },
+    });
+  }
+
+  function reinstate(id: string, note = 'Кандидат втратив фокус через звінок; я був поруч.') {
+    return adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${id}/reinstate`,
+      headers: adminAuth,
+      payload: { note },
+    });
+  }
+
+  it('scores the answers a terminated attempt had already given', async () => {
+    // The answers were always in the database; before this endpoint no route
+    // could reach them, so a proctor mistake destroyed the result outright.
+    const started = await begin();
+    const answered = await answerCorrectly(started, 8);
+    expect((await condemn(started)).json().attempt.status).toBe('terminated');
+
+    const response = await reinstate(started.attempt.id);
+    expect(response.statusCode).toBe(200);
+    const { reinstated, result } = response.json();
+
+    expect(result.status).toBe('submitted');
+    expect(result.answersRevealed).toBe(true);
+    expect(result.breakdown.correct).toBe(answered);
+    expect(reinstated.previousReason).toContain('приховано');
+    expect(reinstated.previousStrikes).toBeGreaterThanOrEqual(4);
+    expect(reinstated.forgivenEvents).toBe(1);
+    expect(reinstated.note).toContain('звінок');
+  });
+
+  it('reports how little of the paper was answered, so the rung is not read as a verdict', async () => {
+    // Scoring a paper abandoned at question three yields a level that means
+    // nothing. The reviewer has to see the coverage next to it.
+    const started = await begin();
+    await answerCorrectly(started, 3);
+    await condemn(started);
+
+    const { reinstated } = (await reinstate(started.attempt.id)).json();
+    expect(reinstated.answeredQuestions).toBe(3);
+    expect(reinstated.totalQuestions).toBe(20);
+  });
+
+  it('keeps the forgiven events out of the verdict, so the attempt is not condemned again', async () => {
+    // This is the property that makes reinstatement real rather than cosmetic.
+    // applyIntegrityVerdict replays the WHOLE stored log on every report and
+    // rewrites the strike count from it, and the integrity route accepts
+    // reports whatever the status - so an attempt whose log still counted would
+    // have its terminating strikes written straight back onto it.
+    const started = await begin();
+    await answerCorrectly(started, 5);
+    await condemn(started);
+    await reinstate(started.attempt.id);
+
+    const after = await adminApp.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/integrity`,
+      headers: started.candidateAuth,
+      payload: {
+        events: [{ type: 'window_blur', occurredAt: Date.now(), durationMs: 3_000 }],
+      },
+    });
+
+    // Only the one new event counts. Without forgiveness this would be back at
+    // the terminating total.
+    expect(after.json().verdict.strikes).toBe(1);
+    expect(after.json().verdict.terminate).toBe(false);
+    expect(after.json().attempt.status).toBe('submitted');
+  });
+
+  it('keeps the forgiven events in the audit log rather than deleting them', async () => {
+    const started = await begin();
+    await condemn(started);
+    await reinstate(started.attempt.id);
+
+    const audit = await adminApp.inject({
+      method: 'GET',
+      url: `/api/admin/attempts/${started.attempt.id}/integrity`,
+      headers: adminAuth,
+    });
+    const body = audit.json();
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0].forgiven).toBe(1);
+    expect(body.events[0].type).toBe('visibility_hidden');
+    expect(body.reinstatement.note).toContain('звінок');
+    expect(body.reinstatement.previousStrikes).toBeGreaterThanOrEqual(4);
+  });
+
+  it('marks the attempt as reinstated in the roster, so it never reads as a clean run', async () => {
+    const started = await begin();
+    await condemn(started);
+    await reinstate(started.attempt.id);
+
+    const roster = await adminApp.inject({
+      method: 'GET',
+      url: '/api/admin/attempts',
+      headers: adminAuth,
+    });
+    const row = roster.json().attempts.find((a: any) => a.id === started.attempt.id);
+    expect(row.reinstated).toBe(1);
+    expect(row.reinstatement_note).toContain('звінок');
+    expect(row.level).toBeTruthy();
+  });
+
+  it('refuses to reinstate an attempt that was never terminated', async () => {
+    const started = await begin();
+    const response = await reinstate(started.attempt.id);
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('attempt_not_terminated');
+  });
+
+  it('will not reinstate the same attempt twice', async () => {
+    const started = await begin();
+    await condemn(started);
+    expect((await reinstate(started.attempt.id)).statusCode).toBe(200);
+    const second = await reinstate(started.attempt.id);
+    expect(second.statusCode).toBe(409);
+    expect(second.json().error).toBe('attempt_not_terminated');
+  });
+
+  it('requires the reviewer to state a reason', async () => {
+    // Overturning a termination is a judgement someone has to own in writing:
+    // the roster will show this attempt beside clean ones.
+    const started = await begin();
+    await condemn(started);
+
+    const blank = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      headers: adminAuth,
+      payload: { note: '  ' },
+    });
+    expect(blank.statusCode).toBe(400);
+
+    const missing = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      headers: adminAuth,
+      payload: {},
+    });
+    expect(missing.statusCode).toBe(400);
+  });
+
+  it('refuses an unknown attempt, and refuses anyone without the admin token', async () => {
+    const missing = await adminApp.inject({
+      method: 'POST',
+      url: '/api/admin/attempts/does-not-exist/reinstate',
+      headers: adminAuth,
+      payload: { note: 'whatever' },
+    });
+    expect(missing.statusCode).toBe(404);
+
+    const started = await begin();
+    await condemn(started);
+    const unauthorised = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      payload: { note: 'no token here' },
+    });
+    expect(unauthorised.statusCode).toBe(401);
+
+    // And the candidate's own token must not open the reviewer's door.
+    const asCandidate = await adminApp.inject({
+      method: 'POST',
+      url: `/api/admin/attempts/${started.attempt.id}/reinstate`,
+      headers: started.candidateAuth,
+      payload: { note: 'let me out' },
+    });
+    expect(asCandidate.statusCode).toBe(401);
   });
 });

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IntegrityEvent } from '@qasc/core';
 import { ApiError, api } from './lib/api.js';
 import type { AttemptView, MetaResponse, PaperQuestion, ResultResponse } from './lib/api.js';
+import { AnswerQueue } from './lib/answerQueue.js';
+import type { AnswerQueueStatus } from './lib/answerQueue.js';
 import { Proctor } from './lib/proctor.js';
 import { Banner, Card } from './components/ui.js';
 import { StartScreen } from './screens/StartScreen.js';
@@ -13,9 +15,11 @@ import { ResultScreen } from './screens/ResultScreen.js';
  *
  * Kept in sessionStorage, not localStorage, on purpose: sessionStorage is scoped
  * to a single tab, so opening the attempt in a second tab does not silently hand
- * that tab a working token. It also means a reload resumes cleanly, which is what
- * makes it safe to end an attempt on a genuine navigation away - the candidate
- * who refreshes by accident is not punished for it, only recorded.
+ * that tab a working token. It also means a reload resumes cleanly: the reload
+ * fires `pagehide`, so it is recorded as one navigation_away, but that costs a
+ * single strike out of four rather than the attempt. An accidental refresh
+ * therefore is not fatal - which matters, because the start screen tells the
+ * candidate the server-side timer survives a reload.
  */
 const SESSION_KEY = 'qasc.attempt';
 
@@ -58,12 +62,16 @@ export function App() {
   const [terminationReason, setTerminationReason] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<AnswerQueueStatus>({
+    pending: 0,
+    retrying: false,
+  });
   const [submitting, setSubmitting] = useState(false);
   const [strikesRemaining, setStrikesRemaining] = useState(2);
 
   const proctorRef = useRef<Proctor | null>(null);
   const attemptRef = useRef<{ id: string; token: string } | null>(null);
+  const queueRef = useRef<AnswerQueue | null>(null);
 
   // --- bootstrap -----------------------------------------------------------
 
@@ -119,6 +127,39 @@ export function App() {
     attemptRef.current = { id: view.id, token: activeToken };
   }, []);
 
+  /**
+   * One queue per attempt. It reads the attempt from the ref rather than
+   * closing over it, so a resume that swaps the token does not leave the queue
+   * writing with a dead one.
+   */
+  const answerQueue = useCallback((): AnswerQueue => {
+    if (!queueRef.current) {
+      queueRef.current = new AnswerQueue({
+        save: async (questionId, optionIds) => {
+          const active = attemptRef.current;
+          if (!active) throw new ApiError(409, 'attempt_gone', 'Спроби вже немає.');
+          return api.saveAnswer(active.id, active.token, questionId, [...optionIds]);
+        },
+        onStatus: setSaveStatus,
+        onFatal: (err: unknown) => {
+          const active = attemptRef.current;
+          if (!(err instanceof ApiError) || !active) return;
+          if (err.code === 'attempt_terminated') terminateRef.current?.(err.message);
+          else if (err.code.startsWith('attempt_')) {
+            void loadResultRef.current?.(active.id, active.token);
+          }
+        },
+      });
+    }
+    return queueRef.current;
+  }, []);
+
+  const discardQueue = useCallback(() => {
+    queueRef.current?.stop();
+    queueRef.current = null;
+    setSaveStatus({ pending: 0, retrying: false });
+  }, []);
+
   const loadResult = useCallback(async (attemptId: string, activeToken: string) => {
     try {
       const loaded = await api.result(attemptId, activeToken);
@@ -148,10 +189,18 @@ export function App() {
   const terminate = useCallback((reason: string | null) => {
     proctorRef.current?.stop();
     proctorRef.current = null;
+    discardQueue();
     setTerminationReason(reason ?? 'Цю спробу завершено за правилами чесного проходження тесту.');
     setPhase('terminated');
     writeSession(null);
-  }, []);
+  }, [discardQueue]);
+
+  // The queue is built before terminate and loadResult exist, and both are
+  // recreated by hooks it must not depend on. Refs keep the wiring one-way.
+  const terminateRef = useRef<((reason: string | null) => void) | null>(null);
+  const loadResultRef = useRef<((id: string, token: string) => Promise<void>) | null>(null);
+  terminateRef.current = terminate;
+  loadResultRef.current = loadResult;
 
   // --- proctor -------------------------------------------------------------
 
@@ -213,8 +262,9 @@ export function App() {
             await loadResult(attempt.id, token);
           }
         } catch {
-          // A dropped heartbeat is not fatal for the candidate: the server will
-          // record the gap and the next successful ping reconciles the state.
+          // A dropped heartbeat is not fatal for the candidate: the server
+          // records the gap as a heartbeat_gap event, which costs nothing below
+          // two minutes, and the next successful ping reconciles the state.
         }
       })();
     }, period);
@@ -262,20 +312,13 @@ export function App() {
     (questionId: string, optionIds: string[]) => {
       const active = attemptRef.current;
       if (!active) return;
-      // Optimistic: the UI must not wait for the network on every click.
+      // Optimistic: the UI must not wait for the network on every click. The
+      // queue is what makes that honest - it keeps retrying a failed write
+      // instead of leaving the screen showing an answer the server never got.
       setAnswers((prev) => ({ ...prev, [questionId]: optionIds }));
-      setSaving(true);
-      void api
-        .saveAnswer(active.id, active.token, questionId, optionIds)
-        .catch((err: unknown) => {
-          if (err instanceof ApiError && err.code.startsWith('attempt_')) {
-            if (err.code === 'attempt_terminated') terminate(err.message);
-            else void loadResult(active.id, active.token);
-          }
-        })
-        .finally(() => setSaving(false));
+      answerQueue().set(questionId, optionIds);
     },
-    [terminate, loadResult],
+    [answerQueue],
   );
 
   const handleSubmit = useCallback(async () => {
@@ -283,9 +326,24 @@ export function App() {
     if (!active) return;
     setSubmitting(true);
     try {
+      // Land every outstanding answer first. Submitting with a write still in
+      // flight would score that question blank, which is the silent data loss
+      // the queue exists to prevent - so if it cannot drain, say so and let the
+      // candidate press the button again rather than grading an answer that
+      // was made but never arrived.
+      const drained = await answerQueue().flush(8_000);
+      if (!drained) {
+        setError(
+          'Останні відповіді ще не збереглися - зʼєднання нестабільне. ' +
+            'Не закривайте сторінку: щойно звʼязок відновиться, натисніть «Завершити» ще раз.',
+        );
+        setSubmitting(false);
+        return;
+      }
       proctorRef.current?.stop();
       proctorRef.current = null;
       const submitted = await api.submit(active.id, active.token);
+      discardQueue();
       setResult(submitted);
       setPhase('result');
     } catch (err) {
@@ -301,6 +359,7 @@ export function App() {
 
   const handleRestart = useCallback(() => {
     writeSession(null);
+    discardQueue();
     attemptRef.current = null;
     setAttempt(null);
     setToken(null);
@@ -311,7 +370,7 @@ export function App() {
     setTerminationReason(null);
     setError(null);
     setPhase('start');
-  }, []);
+  }, [discardQueue]);
 
   // --- render --------------------------------------------------------------
 
@@ -341,7 +400,7 @@ export function App() {
             questions={questions}
             answers={answers}
             secondsRemaining={secondsRemaining}
-            saving={saving}
+            saveStatus={saveStatus}
             warning={warning}
             strikesRemaining={strikesRemaining}
             onSelect={handleSelect}

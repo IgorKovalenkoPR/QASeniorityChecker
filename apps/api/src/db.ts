@@ -57,10 +57,27 @@ CREATE TABLE IF NOT EXISTS integrity_events (
   duration_ms INTEGER,
   -- Set when the server, not the client, inferred the event (e.g. a heartbeat gap).
   server_derived INTEGER NOT NULL DEFAULT 0,
+  -- Set when a reviewer reinstated the attempt. Forgiven rows are kept for the
+  -- audit trail but excluded from the verdict, which is what stops the replay
+  -- from terminating the attempt all over again on the next report.
+  forgiven    INTEGER NOT NULL DEFAULT 0,
   UNIQUE (attempt_id, type, occurred_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_integrity_attempt ON integrity_events (attempt_id, id);
+
+-- One row per reinstated attempt. A termination that a reviewer overturned is
+-- not the same thing as a clean run, and the roster must never present it as
+-- one, so the decision is recorded rather than just undone.
+CREATE TABLE IF NOT EXISTS attempt_reinstatements (
+  attempt_id       TEXT PRIMARY KEY REFERENCES attempts(id) ON DELETE CASCADE,
+  -- Why the reviewer overturned it, in their own words. Required.
+  note             TEXT NOT NULL,
+  previous_reason  TEXT,
+  previous_strikes INTEGER NOT NULL,
+  forgiven_events  INTEGER NOT NULL,
+  reinstated_at    INTEGER NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS attempt_results (
   attempt_id  TEXT PRIMARY KEY REFERENCES attempts(id) ON DELETE CASCADE,
@@ -75,6 +92,22 @@ CREATE TABLE IF NOT EXISTS attempt_results (
 );
 `;
 
+/**
+ * Migrations.
+ *
+ * The schema above is create-if-missing, which cannot add a column to a
+ * database that already has the table - and an attempt that needs reinstating
+ * is by definition one that already exists. Each step is idempotent and keyed
+ * off the actual table shape rather than a version counter, so it is a no-op on
+ * a fresh database and safe to run on every open.
+ */
+function migrate(db: Database.Database): void {
+  const columns = db.prepare('PRAGMA table_info(integrity_events)').all() as { name: string }[];
+  if (!columns.some((c) => c.name === 'forgiven')) {
+    db.exec('ALTER TABLE integrity_events ADD COLUMN forgiven INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
 export type Db = Database.Database;
 
 let instance: Db | null = null;
@@ -83,6 +116,7 @@ export function openDatabase(file: string = config.databaseFile): Db {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new Database(file);
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

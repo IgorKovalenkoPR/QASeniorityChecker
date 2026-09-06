@@ -3,6 +3,38 @@ import { LEVEL_RULES, describeGap, resolveLevel } from '../src/levels.js';
 import { isCorrect, scoreAttempt } from '../src/scoring.js';
 import type { AnswerSheet, Level, Question, Tier } from '../src/index.js';
 
+/** The percentages a tier of N questions can actually produce, as scoring rounds them. */
+function tierScale(questions: number): number[] {
+  return Array.from(
+    { length: questions + 1 },
+    (_, correct) => Math.round((correct / questions) * 1000) / 10,
+  );
+}
+
+/** Every score combination the 4/6/6/4 blueprint can yield. */
+function achievableProfiles(): Record<Tier, number>[] {
+  const out: Record<Tier, number>[] = [];
+  for (const trainee of tierScale(4))
+    for (const junior of tierScale(6))
+      for (const middle of tierScale(6))
+        for (const senior of tierScale(4)) out.push({ trainee, junior, middle, senior });
+  return out;
+}
+
+function ruleIndex(level: Level): number {
+  return LEVEL_RULES.findIndex((r) => r.level === level);
+}
+
+function satisfiedBy(rule: (typeof LEVEL_RULES)[number], percents: Record<Tier, number>): boolean {
+  return Object.entries(rule.requires).every(
+    ([tier, min]) => percents[tier as Tier] >= (min as number),
+  );
+}
+
+function describe_(rule: (typeof LEVEL_RULES)[number], percents: Record<Tier, number>): string {
+  return `${rule.label} vs ${JSON.stringify(percents)}`;
+}
+
 function question(id: string, tier: Tier, correct: string[] = ['a']): Question {
   return {
     id,
@@ -87,17 +119,88 @@ describe('the Performance Review ladder', () => {
     expect(level).toBe('trainee_minus');
   });
 
-  it('awards the highest rung that passes, and only rungs that pass', () => {
-    for (const rule of LEVEL_RULES) {
-      const percents: Record<Tier, number> = { trainee: 0, junior: 0, middle: 0, senior: 0 };
-      for (const [tier, min] of Object.entries(rule.requires)) {
-        percents[tier as Tier] = min as number;
+  it('does not hand out a rung whose lower rungs were never cleared', () => {
+    // The exact profile that used to score Senior. The senior row names only
+    // red >= 50 and yellow >= 75, so read in isolation it passed - on a paper
+    // with nothing at all on the two lower tiers.
+    expect(resolveLevel({ trainee: 0, junior: 0, middle: 83.3, senior: 50 }).level).toBe(
+      'trainee_minus',
+    );
+    // And the realistic version of the same shape: someone who knows the
+    // syllabus but missed the soft Trainee-level rows.
+    expect(resolveLevel({ trainee: 25, junior: 50, middle: 83.3, senior: 50 }).level).toBe(
+      'trainee',
+    );
+    // A genuine Senior profile is untouched.
+    expect(resolveLevel({ trainee: 100, junior: 100, middle: 83.3, senior: 50 }).level).toBe(
+      'senior',
+    );
+  });
+
+  it('awards exactly the rung below the first rule that fails', () => {
+    // The defining property, checked over every score the test can actually
+    // produce: 4 trainee questions, 6 junior, 6 middle, 4 senior.
+    for (const percents of achievableProfiles()) {
+      const awardedIndex = ruleIndex(resolveLevel(percents).level);
+      // Everything up to and including the award is satisfied...
+      for (const rule of LEVEL_RULES.slice(0, awardedIndex + 1)) {
+        expect(satisfiedBy(rule, percents), describe_(rule, percents)).toBe(true);
       }
-      const awarded = resolveLevel(percents);
-      const awardedIndex = LEVEL_RULES.findIndex((r) => r.level === awarded.level);
-      const ruleIndex = LEVEL_RULES.findIndex((r) => r.level === rule.level);
-      expect(awardedIndex).toBeGreaterThanOrEqual(ruleIndex);
+      // ...and the rung above it, if there is one, is not.
+      const blocker = LEVEL_RULES[awardedIndex + 1];
+      if (blocker) {
+        expect(satisfiedBy(blocker, percents), describe_(blocker, percents)).toBe(false);
+      }
     }
+  });
+
+  it('never lowers the rung when a tier score goes up', () => {
+    // Answering one more question correctly must never cost a candidate a
+    // rung. Cheap to state, and the kind of thing a threshold edit breaks.
+    const scales: Record<Tier, number[]> = {
+      trainee: tierScale(4),
+      junior: tierScale(6),
+      middle: tierScale(6),
+      senior: tierScale(4),
+    };
+    for (const percents of achievableProfiles()) {
+      const base = ruleIndex(resolveLevel(percents).level);
+      for (const tier of ['trainee', 'junior', 'middle', 'senior'] as Tier[]) {
+        const scale = scales[tier];
+        const next = scale[scale.indexOf(percents[tier]) + 1];
+        if (next === undefined) continue;
+        const better = { ...percents, [tier]: next };
+        expect(
+          ruleIndex(resolveLevel(better).level),
+          `raising ${tier} from ${percents[tier]}% to ${next}% lowered the rung`,
+        ).toBeGreaterThanOrEqual(base);
+      }
+    }
+  });
+
+  it('leaves every rung on the ladder reachable', () => {
+    // Cumulative requirements could in principle strand a rung that no real
+    // paper can produce. None of the nine is stranded.
+    const reached = new Set(achievableProfiles().map((p) => resolveLevel(p).level));
+    for (const rule of LEVEL_RULES) {
+      expect(reached.has(rule.level), `no achievable paper awards ${rule.label}`).toBe(true);
+    }
+  });
+
+  it('names the rule that actually blocked progression', () => {
+    // Now that the award is the rung below the FIRST failing rule, the rung
+    // above it is by construction the real obstacle - so the candidate is told
+    // what stopped them rather than what some higher row happens to want.
+    // A strong middle and senior showing, held at Junior+ by two junior misses.
+    const percents = { trainee: 100, junior: 66.7, middle: 100, senior: 100 };
+    expect(resolveLevel(percents).level).toBe('junior_plus');
+    const gap = describeGap('junior_plus', percents);
+    expect(gap).toContain('Middle-');
+    expect(gap).toContain('junior');
+    expect(gap).toContain('75');
+    // And it does not point at the middle or senior tiers, which are already full.
+    expect(gap).not.toContain('middle');
+    expect(gap).not.toContain('senior');
   });
 
   it('explains what is missing for the next rung', () => {

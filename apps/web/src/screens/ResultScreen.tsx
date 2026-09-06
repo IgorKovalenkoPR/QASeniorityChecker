@@ -166,11 +166,22 @@ export function ResultScreen({
 
       <Card>
         <div className="row row--between">
-          <h2 style={{ fontSize: 'var(--fs-h3)' }}>Розбір відповідей</h2>
+          <h2 style={{ fontSize: 'var(--fs-h3)' }}>
+            {result.answersRevealed ? 'Розбір відповідей' : 'Ваші відповіді за питаннями'}
+          </h2>
           <button className="btn btn--secondary" type="button" onClick={() => setShowReview((v) => !v)}>
-            {showReview ? 'Сховати відповіді' : `Показати всі ${result.questions.length} відповідей`}
+            {showReview
+              ? 'Сховати'
+              : `Показати всі ${result.questions.length} ${result.answersRevealed ? 'відповідей' : 'питань'}`}
           </button>
         </div>
+        {!result.answersRevealed ? (
+          <p className="small muted" style={{ marginTop: 'var(--sp-2)' }}>
+            Правильні відповіді й пояснення не показуються: банк питань має лишитися
+            придатним для наступних оцінювань. Ви бачите, які питання зараховано, а
+            детальний розбір доступний вашому керівнику разом із результатом.
+          </p>
+        ) : null}
         {showReview ? (
           <div className="review" style={{ marginTop: 'var(--sp-5)' }}>
             {result.questions.map((q, i) => (
@@ -193,14 +204,16 @@ export function ResultScreen({
                       <em className="muted">без відповіді</em>
                     )}
                   </div>
-                  {!q.correct ? (
+                  {!q.correct && q.correctAnswer ? (
                     <div style={{ marginTop: 'var(--sp-1)' }}>
                       <span className="muted">Правильна відповідь: </span>
                       {q.correctAnswer.join('; ')}
                     </div>
                   ) : null}
                 </div>
-                <div className="review__explanation">{q.explanation}</div>
+                {q.explanation ? (
+                  <div className="review__explanation">{q.explanation}</div>
+                ) : null}
               </article>
             ))}
           </div>
