@@ -202,13 +202,40 @@ being regenerated, or variant generation stopped being deterministic.
 | `QASC_DB` | `data/qasc.db` | SQLite file |
 | `QASC_ATTEMPT_SECONDS` | `1800` | Wall-clock budget per attempt |
 | `QASC_HEARTBEAT_SECONDS` | `15` | Client ping period |
-| `QASC_HEARTBEAT_GRACE_SECONDS` | `45` | Silence tolerated before it becomes an event |
+| `QASC_HEARTBEAT_GRACE_SECONDS` | `120` | Silence tolerated before it becomes an event |
+| `QASC_REVEAL_ANSWERS_TO_CANDIDATE` | `false` | Whether a candidate's own result carries the answer key |
 | `QASC_OPTION_SECRET` | *generated in dev* | **Required in production**, ≥ 32 chars |
 | `QASC_ADMIN_TOKEN` | *unset* | Admin endpoints return 503 until set |
 | `QASC_CORS_ORIGIN` | `http://localhost:5173` | |
 
 `QASC_OPTION_SECRET` must be stable for the lifetime of an attempt: rotating it mid-test invalidates
 the option ids of every paper in flight. The process refuses to start in production without it.
+
+### Reading a finished attempt
+
+The candidate's result deliberately does **not** carry the answer key
+(`QASC_REVEAL_ANSWERS_TO_CANDIDATE` is `false` by default). They see their rung, the per-tier and
+per-competency breakdown, and which of the twenty questions counted - not the correct answers or
+the explanations. The reason is arithmetic: a variant is 20 questions out of 504 and the variant
+counter round-robins, so a reviewer-grade result screen shown to everyone is a slow, complete
+export of the bank to anyone holding the link.
+
+The reviewer's view lives behind `QASC_ADMIN_TOKEN`:
+
+```
+GET /api/admin/attempts                    # roster, newest first, with the final rung
+GET /api/admin/attempts/:id/result         # per-question detail, answers and explanations
+GET /api/admin/attempts/:id/integrity      # the honesty event log for that attempt
+```
+
+`/result` is the endpoint the pilot needs: without it you can see that somebody scored Middle but
+not which questions they missed, and the candidate's own token is stored only as a hash, so it
+cannot be replayed after the fact.
+
+One consequence worth knowing before the pilot: a terminated attempt is never scored, so it has no
+row in `attempt_results` and `/result` returns 404 for it. The answers themselves are still in
+`attempt_answers` regardless of status, so nothing is lost - but reinstating a terminated attempt
+is currently a manual SQLite edit, not an endpoint.
 
 ---
 

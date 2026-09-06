@@ -47,13 +47,17 @@ export interface ResultResponse {
     id: string;
     text: string;
     yourAnswer: string[];
-    correctAnswer: string[];
     correct: boolean;
-    explanation: string;
     tier: Tier;
     competencyId: string;
     source: string;
+    /** Absent when the server is configured to keep the answer key private. */
+    correctAnswer?: string[];
+    /** Absent when the server is configured to keep the answer key private. */
+    explanation?: string;
   }[];
+  /** Whether the server sent the answer key along with the result. */
+  answersRevealed: boolean;
 }
 
 export interface MetaResponse {

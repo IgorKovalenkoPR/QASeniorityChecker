@@ -16,14 +16,20 @@
  * than a vitest case - a unit test that silently passes when `dist/` is absent
  * would be worse than no test at all.
  */
-import { globSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { QUESTION_BANK } from '@qasc/content';
 
 const WEB_DIST = resolve(process.cwd(), 'apps/web/dist/assets');
 
 function bundleFiles(): string[] {
-  const files = globSync('*.js', { cwd: WEB_DIST }).map((f) => resolve(WEB_DIST, f));
+  // readdirSync rather than fs.globSync: globSync landed in Node 22, while the
+  // repo supports Node >=20.11, so the guard for the project's central
+  // invariant used to crash on exactly the Node version an operator is most
+  // likely to have locally.
+  const files = readdirSync(WEB_DIST)
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => resolve(WEB_DIST, f));
   if (files.length === 0) {
     console.error(
       `No built bundle found in ${WEB_DIST}.\n` +

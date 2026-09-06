@@ -239,14 +239,21 @@ export function applyIntegrityVerdict(db: Db, attempt: AttemptRow) {
  * A candidate who patches out the visibility listeners still has to keep the
  * heartbeat flowing, and a heartbeat cannot be sent by a tab that has been
  * closed or a laptop that has been put to sleep. Any gap longer than the grace
- * window is recorded as a `visibility_hidden` event with its measured duration,
- * which then feeds the ordinary strike rules.
+ * window is recorded as a `heartbeat_gap` event with its measured duration.
+ *
+ * It is deliberately NOT recorded as `visibility_hidden`. The server cannot
+ * tell a closed tab from a dropped connection, a VPN reconnect or a lid that
+ * was shut, and `visibility_hidden` carries the ordinary 10-second hard
+ * terminate - which meant every gap past the grace window ended the attempt
+ * instantly, since the grace window is longer than that threshold. Silence is
+ * the one signal the candidate cannot see happening and cannot argue with, so
+ * it is scored on its own, far more forgiving scale.
  */
 export function detectHeartbeatGap(db: Db, attempt: AttemptRow): IntegrityEvent | null {
   const gap = Date.now() - attempt.last_seen_at;
   if (gap <= config.heartbeatGraceSec * 1000) return null;
   const event: IntegrityEvent = {
-    type: 'visibility_hidden',
+    type: 'heartbeat_gap',
     occurredAt: attempt.last_seen_at,
     durationMs: gap,
   };
@@ -260,12 +267,14 @@ export interface ResultQuestion {
   id: string;
   text: string;
   yourAnswer: string[];
-  correctAnswer: string[];
   correct: boolean;
-  explanation: string;
   tier: string;
   competencyId: string;
   source: string;
+  /** Present only when the caller is allowed to see the answer key. */
+  correctAnswer?: string[];
+  /** Present only when the caller is allowed to see the answer key. */
+  explanation?: string;
 }
 
 export interface AttemptResult {
@@ -273,6 +282,8 @@ export interface AttemptResult {
   status: AttemptStatus;
   breakdown: ScoreBreakdown;
   questions: ResultQuestion[];
+  /** Whether `questions` carries the answer key, so a client can adapt. */
+  answersRevealed: boolean;
 }
 
 /**
@@ -316,10 +327,27 @@ export function submitAttempt(db: Db, attempt: AttemptRow): AttemptResult {
   tx();
 
   const finalStatus: AttemptStatus = attempt.status === 'in_progress' ? 'submitted' : attempt.status;
-  return buildResult(db, { ...attempt, status: finalStatus });
+  return buildResult(db, { ...attempt, status: finalStatus }, {
+    revealAnswers: config.revealAnswersToCandidate,
+  });
 }
 
-export function buildResult(db: Db, attempt: AttemptRow): AttemptResult {
+/**
+ * Assemble a result. `revealAnswers` decides whether the answer key travels
+ * with it, and it is a required argument on purpose: a default would make the
+ * safe choice the one you have to remember, and forgetting it here publishes
+ * the bank.
+ *
+ * The per-question `correct` flag stays either way. It is what makes the
+ * result useful to the candidate, and it leaks little the per-competency
+ * breakdown does not already say - unlike the answer text and the explanation,
+ * which are the expensive, reusable part of the bank.
+ */
+export function buildResult(
+  db: Db,
+  attempt: AttemptRow,
+  options: { revealAnswers: boolean },
+): AttemptResult {
   const stored = db
     .prepare('SELECT breakdown FROM attempt_results WHERE attempt_id = ?')
     .get(attempt.id) as { breakdown: string } | undefined;
@@ -334,20 +362,29 @@ export function buildResult(db: Db, attempt: AttemptRow): AttemptResult {
     const correct =
       selected.length === q.correctOptionIds.length &&
       selected.every((id) => q.correctOptionIds.includes(id));
-    return {
+    const shown: ResultQuestion = {
       id: q.id,
       text: q.text,
       yourAnswer: textOf(selected),
-      correctAnswer: textOf(q.correctOptionIds),
       correct,
-      explanation: q.explanation,
       tier: q.tier,
       competencyId: q.competencyId,
       source: q.source,
-    } satisfies ResultQuestion;
+    };
+    if (options.revealAnswers) {
+      shown.correctAnswer = textOf(q.correctOptionIds);
+      shown.explanation = q.explanation;
+    }
+    return shown;
   });
 
-  return { attemptId: attempt.id, status: attempt.status, breakdown, questions };
+  return {
+    attemptId: attempt.id,
+    status: attempt.status,
+    breakdown,
+    questions,
+    answersRevealed: options.revealAnswers,
+  };
 }
 
 export const attemptMeta = {

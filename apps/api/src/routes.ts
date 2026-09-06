@@ -12,6 +12,7 @@ import {
   authorizeAttempt,
   buildResult,
   detectHeartbeatGap,
+  getAttempt,
   recordIntegrityEvents,
   requireLive,
   saveAnswer,
@@ -209,7 +210,9 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
     const { id } = request.params as { id: string };
     const attempt = authorizeAttempt(db, id, bearer(request));
     if (attempt.status === 'submitted') {
-      return reply.send(buildResult(db, attempt));
+      return reply.send(
+        buildResult(db, attempt, { revealAnswers: config.revealAnswersToCandidate }),
+      );
     }
     return reply.send(submitAttempt(db, attempt));
   });
@@ -224,7 +227,9 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
         'attempt_terminated',
       );
     }
-    return reply.send(buildResult(db, attempt));
+    return reply.send(
+      buildResult(db, attempt, { revealAnswers: config.revealAnswersToCandidate }),
+    );
   });
 }
 
@@ -270,6 +275,22 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db): void {
       .prepare('SELECT * FROM integrity_events WHERE attempt_id = ? ORDER BY id')
       .all(id);
     return { events };
+  });
+
+  /**
+   * The reviewer's view of a finished attempt: which questions it got wrong,
+   * what the right answers were, and why. This is where the answer key lives
+   * once QASC_REVEAL_ANSWERS_TO_CANDIDATE is off, and it is also the only way
+   * to see the detail of an attempt at all - the candidate's own token is
+   * stored hashed, so it cannot be replayed after the fact.
+   */
+  app.get('/api/admin/attempts/:id/result', { preHandler: guard }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const attempt = getAttempt(db, id);
+    if (!attempt) {
+      return reply.code(404).send({ error: 'not_found', message: 'Такої спроби немає.' });
+    }
+    return reply.send(buildResult(db, attempt, { revealAnswers: true }));
   });
 
   app.get('/api/admin/bank', { preHandler: guard }, async () => ({

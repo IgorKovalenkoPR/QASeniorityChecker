@@ -13,9 +13,11 @@ import { ResultScreen } from './screens/ResultScreen.js';
  *
  * Kept in sessionStorage, not localStorage, on purpose: sessionStorage is scoped
  * to a single tab, so opening the attempt in a second tab does not silently hand
- * that tab a working token. It also means a reload resumes cleanly, which is what
- * makes it safe to end an attempt on a genuine navigation away - the candidate
- * who refreshes by accident is not punished for it, only recorded.
+ * that tab a working token. It also means a reload resumes cleanly: the reload
+ * fires `pagehide`, so it is recorded as one navigation_away, but that costs a
+ * single strike out of four rather than the attempt. An accidental refresh
+ * therefore is not fatal - which matters, because the start screen tells the
+ * candidate the server-side timer survives a reload.
  */
 const SESSION_KEY = 'qasc.attempt';
 
@@ -213,8 +215,9 @@ export function App() {
             await loadResult(attempt.id, token);
           }
         } catch {
-          // A dropped heartbeat is not fatal for the candidate: the server will
-          // record the gap and the next successful ping reconciles the state.
+          // A dropped heartbeat is not fatal for the candidate: the server
+          // records the gap as a heartbeat_gap event, which costs nothing below
+          // two minutes, and the next successful ping reconciles the state.
         }
       })();
     }, period);

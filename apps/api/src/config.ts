@@ -1,5 +1,13 @@
 import { randomBytes } from 'node:crypto';
 
+function bool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  if (['1', 'true', 'yes', 'on'].includes(raw.toLowerCase())) return true;
+  if (['0', 'false', 'no', 'off'].includes(raw.toLowerCase())) return false;
+  throw new Error(`${name} must be a boolean (true/false)`);
+}
+
 function int(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -37,9 +45,22 @@ export const config = {
    * unreported absence. Must be comfortably above the client heartbeat period.
    */
   heartbeatIntervalSec: int('QASC_HEARTBEAT_SECONDS', 15),
-  heartbeatGraceSec: int('QASC_HEARTBEAT_GRACE_SECONDS', 45),
+  /**
+   * 120s rather than 45s: three missed heartbeats is a flaky network, not a
+   * verdict. A VPN reconnect alone routinely takes longer than 45 seconds.
+   */
+  heartbeatGraceSec: int('QASC_HEARTBEAT_GRACE_SECONDS', 120),
   optionSecret: optionSecret(),
   /** Serve the built SPA from the API process when it exists. */
   webDist: process.env.QASC_WEB_DIST ?? '../web/dist',
   corsOrigin: process.env.QASC_CORS_ORIGIN ?? 'http://localhost:5173',
+  /**
+   * Whether the candidate's own result includes the correct answers and the
+   * explanations. Off by default: the question bank is the expensive asset here
+   * (504 written questions), and with the review switched on, anyone with the
+   * link can start an attempt, submit it untouched, read twenty answers, and
+   * repeat - the variant round-robin hands out a fresh paper each time. The
+   * reviewer still sees everything through the admin result endpoint.
+   */
+  revealAnswersToCandidate: bool('QASC_REVEAL_ANSWERS_TO_CANDIDATE', false),
 } as const;
