@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck, tests, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the engines field: the API relies on Node 20.11+ APIs.
+          node-version: 22
+          cache: npm
+
+      # `ci` rather than `install`: it fails on a lockfile that has drifted from
+      # package.json instead of quietly rewriting it, which is what you want on
+      # a build machine.
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # The product's central security claim: correct answers never reach the
+      # browser. Source-level review cannot guarantee it, so this greps the
+      # built artefact for question ids and explanation text.
+      - name: Answer key must not be in the client bundle
+        run: npm run check:bundle
+
+      # The 50 papers are generated from a fixed seed, so an unchanged bank must
+      # regenerate docs/variants.md byte for byte. A diff here means either the
+      # bank changed without the document being regenerated, or the generation
+      # stopped being deterministic - both worth failing on, because a reviewer
+      # reading a stale answer key is worse than having none.
+      - name: Variant document is in sync with the bank
+        run: |
+          npm run export:variants
+          git diff --exit-code -- docs/variants.md \
+            || {
+              echo "::error file=docs/variants.md::Out of date. Run 'npm run export:variants' and commit the result."
+              exit 1
+            }

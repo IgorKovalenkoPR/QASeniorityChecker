@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // Solution file. `tsc -b` with no arguments looks for exactly this path, so
+  // without it `npm run typecheck` fails before checking anything.
+  //
+  // apps/web is absent on purpose: it is a noEmit, non-composite project, and
+  // `tsc -b` can only build composite ones. The typecheck script runs it
+  // separately with `-p`.
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/content" },
+    { "path": "apps/api" },
+    { "path": "scripts" }
+  ]
+}

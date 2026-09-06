@@ -18,8 +18,8 @@
     "start": "npm run build && npm run start -w @qasc/api",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -b --pretty",
-    "lint": "eslint . --max-warnings=0",
+    "check:bundle": "tsx scripts/check-bundle-leak.ts",
+    "typecheck": "tsc -b --pretty && tsc --noEmit -p apps/web",
     "export:variants": "npm run export:variants -w @qasc/api -- ../../docs/variants.md"
   },
   "devDependencies": {
