@@ -174,9 +174,9 @@ export function App() {
           setStrikesRemaining(verdict.remaining);
           if (verdict.terminate) terminate(verdict.reason);
           else if (verdict.strikes > 0) {
-            setWarning(
-              `Вихід зі сторінки тесту зафіксовано. Залишилося попереджень до завершення спроби: ${verdict.remaining}.`,
-            );
+            // Only the cause. TestScreen appends the remaining-strike count, so
+            // including it here too would print the sentence twice.
+            setWarning('Вихід зі сторінки тесту зафіксовано.');
           }
         },
       },
@@ -228,6 +228,12 @@ export function App() {
     void handleSubmit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, secondsRemaining]);
+
+  // Each phase is a different page as far as the reader is concerned, so start
+  // it at the top rather than at the previous screen's scroll offset.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [phase]);
 
   // --- actions -------------------------------------------------------------
 

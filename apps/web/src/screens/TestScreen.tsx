@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { AttemptView, PaperQuestion } from '../lib/api.js';
 import { Banner, Card, Progress, SOURCE_LABELS, TierBadge, Timer } from '../components/ui.js';
 
@@ -29,6 +29,14 @@ export function TestScreen({
 }: TestScreenProps) {
   const [index, setIndex] = useState(0);
   const [confirming, setConfirming] = useState(false);
+
+  // Moving between questions must put the reader at the top of the new one.
+  // Without this the page keeps whatever scroll position the previous question
+  // left, so a candidate arriving from a long question lands halfway down the
+  // next one, with its text tucked under the sticky header.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [index]);
 
   const question = questions[index];
   const answeredCount = useMemo(
