@@ -1,5 +1,11 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import type { AnswerSheet, IntegrityEvent, IntegrityEventType, ScoreBreakdown } from '@qasc/core';
+import type {
+  AnswerSheet,
+  IntegrityEvent,
+  IntegrityEventType,
+  LocalizedText,
+  ScoreBreakdown,
+} from '@qasc/core';
 import {
   DEFAULT_INTEGRITY_POLICY,
   QUESTIONS_PER_VARIANT,
@@ -275,16 +281,16 @@ export function detectHeartbeatGap(db: Db, attempt: AttemptRow): IntegrityEvent 
 
 export interface ResultQuestion {
   id: string;
-  text: string;
-  yourAnswer: string[];
+  text: LocalizedText;
+  yourAnswer: LocalizedText[];
   correct: boolean;
   tier: string;
   competencyId: string;
   source: string;
   /** Present only when the caller is allowed to see the answer key. */
-  correctAnswer?: string[];
+  correctAnswer?: LocalizedText[];
   /** Present only when the caller is allowed to see the answer key. */
-  explanation?: string;
+  explanation?: LocalizedText;
 }
 
 export interface AttemptResult {
@@ -398,8 +404,8 @@ export function buildResult(
   const answers = loadAnswers(db, attempt.id);
   const questions = variantQuestions(attempt.variant_number).map((q) => {
     const selected = answers[q.id] ?? [];
-    const textOf = (ids: readonly string[]) =>
-      ids.map((id) => q.options.find((o) => o.id === id)?.text ?? id);
+    const textOf = (ids: readonly string[]): LocalizedText[] =>
+      ids.map((id) => q.options.find((o) => o.id === id)?.text ?? { en: id, uk: id });
     const correct =
       selected.length === q.correctOptionIds.length &&
       selected.every((id) => q.correctOptionIds.includes(id));

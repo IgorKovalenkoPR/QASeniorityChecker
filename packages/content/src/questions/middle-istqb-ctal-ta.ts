@@ -1,4 +1,5 @@
 import { defineQuestions } from '../define.js';
+import { middleCtalTaEn } from './middle-istqb-ctal-ta.en.js';
 
 /**
  * ISTQB Advanced Level - Test Analyst (CTAL-TA), рівень Middle.
@@ -194,4 +195,4 @@ export const middleCtalTaQuestions = defineQuestions('middle', 'istqb-ctal-ta', 
     'Дефект локалізації, що зʼявляється лише турецькою, найімовірніше спричинений:',
     ['Правилами зміни регістру (турецька i з крапкою і без)', 'Розміром екрана', 'Затримкою мережі', 'Індексуванням бази даних'], 0,
     'Турецька локаль ламає наївні порівняння через toUpperCase/toLowerCase - класичний дефект логіки, залежної від локалі.'],
-]);
+], middleCtalTaEn);

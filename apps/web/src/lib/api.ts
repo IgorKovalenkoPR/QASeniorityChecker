@@ -1,4 +1,5 @@
 import type { IntegrityEvent, IntegrityVerdict, Level, ScoreBreakdown, Tier } from '@qasc/core';
+import type { LocalizedText } from '@qasc/core';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
@@ -19,8 +20,10 @@ export interface AttemptView {
 export interface PaperQuestion {
   id: string;
   index: number;
-  text: string;
-  options: { id: string; text: string }[];
+  // Both languages arrive together and the browser picks, so switching
+  // language mid-test is a local choice rather than a new request for a paper.
+  text: LocalizedText;
+  options: { id: string; text: LocalizedText }[];
   multiSelect: boolean;
   tier: Tier;
   competencyId: string;
@@ -45,16 +48,16 @@ export interface ResultResponse {
   breakdown: ScoreBreakdown;
   questions: {
     id: string;
-    text: string;
-    yourAnswer: string[];
+    text: LocalizedText;
+    yourAnswer: LocalizedText[];
     correct: boolean;
     tier: Tier;
     competencyId: string;
     source: string;
     /** Absent when the server is configured to keep the answer key private. */
-    correctAnswer?: string[];
+    correctAnswer?: LocalizedText[];
     /** Absent when the server is configured to keep the answer key private. */
-    explanation?: string;
+    explanation?: LocalizedText;
   }[];
   /** Whether the server sent the answer key along with the result. */
   answersRevealed: boolean;

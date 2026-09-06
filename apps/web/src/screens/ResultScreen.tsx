@@ -22,7 +22,7 @@ export function ResultScreen({
   meta: MetaResponse | null;
   onRestart: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, text } = useI18n();
   const [showReview, setShowReview] = useState(false);
   const { breakdown } = result;
   const label = meta?.levelLabels[breakdown.level] ?? breakdown.level;
@@ -190,12 +190,12 @@ export function ResultScreen({
                     {q.correct ? t('result.right') : t('result.wrong')}
                   </span>
                 </div>
-                <div style={{ fontWeight: 500, color: 'var(--ink-strong)' }}>{q.text}</div>
+                <div style={{ fontWeight: 500, color: 'var(--ink-strong)' }}>{text(q.text)}</div>
                 <div className="small" style={{ marginTop: 'var(--sp-3)' }}>
                   <div>
                     <span className="muted">{t('result.yourAnswer')}</span>
                     {q.yourAnswer.length > 0 ? (
-                      q.yourAnswer.join('; ')
+                      q.yourAnswer.map(text).join('; ')
                     ) : (
                       <em className="muted">{t('result.noAnswer')}</em>
                     )}
@@ -203,12 +203,12 @@ export function ResultScreen({
                   {!q.correct && q.correctAnswer ? (
                     <div style={{ marginTop: 'var(--sp-1)' }}>
                       <span className="muted">{t('result.correctAnswer')}</span>
-                      {q.correctAnswer.join('; ')}
+                      {q.correctAnswer.map(text).join('; ')}
                     </div>
                   ) : null}
                 </div>
                 {q.explanation ? (
-                  <div className="review__explanation">{q.explanation}</div>
+                  <div className="review__explanation">{text(q.explanation)}</div>
                 ) : null}
               </article>
             ))}

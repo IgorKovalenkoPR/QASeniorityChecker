@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LEVEL_RULES, describeGap, resolveLevel } from '../src/levels.js';
 import { isCorrect, scoreAttempt } from '../src/scoring.js';
-import type { AnswerSheet, Level, Question, Tier } from '../src/index.js';
+import type { AnswerSheet, Level, LocalizedText, Question, Tier } from '../src/index.js';
 
 /** The percentages a tier of N questions can actually produce, as scoring rounds them. */
 function tierScale(questions: number): number[] {
@@ -35,21 +35,24 @@ function describe_(rule: (typeof LEVEL_RULES)[number], percents: Record<Tier, nu
   return `${rule.label} vs ${JSON.stringify(percents)}`;
 }
 
+/** These fixtures do not care about language; the same text serves both. */
+const both = (text: string): LocalizedText => ({ en: text, uk: text });
+
 function question(id: string, tier: Tier, correct: string[] = ['a']): Question {
   return {
     id,
     tier,
     competencyId: 'test-artifacts',
     source: 'pr-matrix',
-    text: `Question ${id}`,
+    text: both(`Question ${id}`),
     options: [
-      { id: 'a', text: 'A' },
-      { id: 'b', text: 'B' },
-      { id: 'c', text: 'C' },
-      { id: 'd', text: 'D' },
+      { id: 'a', text: both('A') },
+      { id: 'b', text: both('B') },
+      { id: 'c', text: both('C') },
+      { id: 'd', text: both('D') },
     ],
     correctOptionIds: correct,
-    explanation: 'Because that is how it works, for a reason long enough to be useful.',
+    explanation: both('Because that is how it works, for a reason long enough to be useful.'),
   };
 }
 

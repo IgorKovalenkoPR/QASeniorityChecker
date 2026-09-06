@@ -56,10 +56,19 @@ function forbiddenStrings(): { label: string; needle: string }[] {
     const q = QUESTION_BANK[i]!;
     needles.push({ label: `question id ${q.id}`, needle: q.id });
     // Explanations are long and unique, so a substring is unambiguous.
+    // Both languages: an English explanation leaking is exactly as bad as a
+    // Ukrainian one, and a guard that only knew about one would have quietly
+    // stopped checking half the bank the day the translation landed.
     needles.push({
-      label: `explanation of ${q.id}`,
-      needle: q.explanation.slice(0, 40),
+      label: `explanation of ${q.id} (uk)`,
+      needle: q.explanation.uk.slice(0, 40),
     });
+    if (q.explanation.en !== q.explanation.uk) {
+      needles.push({
+        label: `explanation of ${q.id} (en)`,
+        needle: q.explanation.en.slice(0, 40),
+      });
+    }
   }
   return needles;
 }

@@ -28,7 +28,7 @@ export function TestScreen({
   onSubmit,
   submitting,
 }: TestScreenProps) {
-  const { t } = useI18n();
+  const { t, text } = useI18n();
   const [index, setIndex] = useState(0);
   const [confirming, setConfirming] = useState(false);
 
@@ -116,7 +116,7 @@ export function TestScreen({
           ) : null}
         </div>
 
-        <h2 className="question__text">{question.text}</h2>
+        <h2 className="question__text">{text(question.text)}</h2>
 
         <ul className="options">
           {question.options.map((option) => {
@@ -130,7 +130,7 @@ export function TestScreen({
                     checked={isSelected}
                     onChange={() => toggle(option.id)}
                   />
-                  <span className="option__text">{option.text}</span>
+                  <span className="option__text">{text(option.text)}</span>
                 </label>
               </li>
             );

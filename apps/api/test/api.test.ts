@@ -146,8 +146,8 @@ describe('taking the test', () => {
       const paperQuestion = started.questions.find((q: any) => q.id === questionId);
       // Match by option TEXT, since the ids are opaque and reshuffled per attempt.
       const optionIds = source.correctOptionIds.map((correctId) => {
-        const text = source.options.find((o) => o.id === correctId)!.text;
-        return paperQuestion.options.find((o: any) => o.text === text).id;
+        const text = source.options.find((o) => o.id === correctId)!.text.uk;
+        return paperQuestion.options.find((o: any) => o.text.uk === text).id;
       });
       const response = await app.inject({
         method: 'PUT',
@@ -610,8 +610,8 @@ describe('reinstating a falsely terminated attempt', () => {
       const source = QUESTION_BY_ID.get(questionId)!;
       const paper = started.questions.find((q: any) => q.id === questionId);
       const optionIds = source.correctOptionIds.map((correctId) => {
-        const text = source.options.find((o) => o.id === correctId)!.text;
-        return paper.options.find((o: any) => o.text === text).id;
+        const text = source.options.find((o) => o.id === correctId)!.text.uk;
+        return paper.options.find((o: any) => o.text.uk === text).id;
       });
       await adminApp.inject({
         method: 'PUT',

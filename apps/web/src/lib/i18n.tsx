@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { LocalizedText } from '@qasc/core';
 
 /**
  * Interface language.
@@ -13,7 +14,8 @@ import type { ReactNode } from 'react';
  * The question bank is a separate matter and is translated on its own schedule -
  * see docs. This module covers the application's own words.
  */
-export type Locale = 'en' | 'uk';
+export type { Locale } from '@qasc/core';
+import type { Locale } from '@qasc/core';
 
 export const LOCALES: readonly Locale[] = ['en', 'uk'];
 export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', uk: 'Українська' };
@@ -369,6 +371,12 @@ export interface I18n {
   locale: Locale;
   setLocale: (next: Locale) => void;
   t: (key: StringKey, vars?: Record<string, string | number>) => string;
+  /**
+   * Resolves a string that came from the server in both languages - question
+   * text, options, explanations. Separate from `t` because it is content
+   * rather than interface: nothing about it is known at build time.
+   */
+  text: (value: LocalizedText) => string;
 }
 
 const LocaleContext = createContext<I18n | null>(null);
@@ -395,6 +403,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       locale,
       setLocale,
       t: (key, vars) => translate(locale, key, vars),
+      text: (value) => value[locale],
     }),
     [locale, setLocale],
   );

@@ -1,4 +1,5 @@
 import { defineQuestions } from '../define.js';
+import { glossaryTraineeEn, glossaryJuniorEn, glossaryMiddleEn } from './glossary.en.js';
 
 /**
  * Перевірка термінології на основі глосарія ISTQB
@@ -71,7 +72,7 @@ export const glossaryTraineeQuestions = defineQuestions('trainee', 'istqb-glossa
     'Глосарій ISTQB: "першопричина" (root cause) - це:',
     ['Джерело дефекту, усунення якого запобігає повторенню дефектів цього типу', 'Рядок коду, що впав', 'Перший помічений симптом', 'Розробник, який його вніс'], 0,
     'Саме означення містить перевірку справжньої першопричини: її усунення має зупинити повторення класу.'],
-]);
+], glossaryTraineeEn);
 
 export const glossaryJuniorQuestions = defineQuestions('junior', 'istqb-glossary', [
   ['GL-J-001', 'testing-levels',
@@ -134,7 +135,7 @@ export const glossaryJuniorQuestions = defineQuestions('junior', 'istqb-glossary
     'Глосарій ISTQB: "забезпечення якості" (QA) зосереджене на:',
     ['Формуванні впевненості, що вимоги до якості буде виконано, через процес', 'Пошуку дефектів у продукті', 'Виконанні тест-кейсів', 'Виправленні дефектів'], 0,
     'QA орієнтоване на процес і є запобіжним; тестування (контроль якості) орієнтоване на продукт і є виявляльним.'],
-]);
+], glossaryJuniorEn);
 
 export const glossaryMiddleQuestions = defineQuestions('middle', 'istqb-glossary', [
   ['GL-M-001', 'testing-metrics',
@@ -197,4 +198,4 @@ export const glossaryMiddleQuestions = defineQuestions('middle', 'istqb-glossary
     'Глосарій ISTQB: "віртуалізація сервісів" дозволяє:',
     ['Тестувати компоненти, що залежать від недоступних або важкодоступних сервісів', 'Лише пришвидшити збірки в CI', 'Запускати тести на віртуальних машинах', 'Автоматизувати деплой'], 0,
     'Вона прибирає доступність сторонніх сервісів із критичного шляху тестового середовища.'],
-]);
+], glossaryMiddleEn);

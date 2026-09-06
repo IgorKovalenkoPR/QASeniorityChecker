@@ -1,4 +1,5 @@
 import { defineQuestions } from '../define.js';
+import { dumpTraineeEn, dumpJuniorEn, dumpMiddleEn } from './dumps.en.js';
 
 /**
  * Питання у форматі практичних тестів - у тій формі, яку використовують
@@ -73,7 +74,7 @@ export const dumpTraineeQuestions = defineQuestions('trainee', 'practice-dump', 
     'Яка назва тест-кейса найкраща?',
     ['Вхід не вдається і показує зрозуміле повідомлення при неправильному паролі', 'Тест входу 3', 'Перевірити вхід', 'Пароль'], 0,
     'Назва має описувати умову і очікуваний результат, щоб читач міг вирішити, чи запускати кейс, не відкриваючи його.'],
-]);
+], dumpTraineeEn);
 
 export const dumpJuniorQuestions = defineQuestions('junior', 'practice-dump', [
   ['DP-J-001', 'rest-http',
@@ -139,7 +140,7 @@ export const dumpJuniorQuestions = defineQuestions('junior', 'practice-dump', [
     'Вимога каже: "експорт має підтримувати великі файли". Ваша перша дія:',
     ['Попросити число: наскільки великі, у якому форматі, за який час', 'Протестувати з файлом на 1 ГБ', 'Позначити вимогу як пройдену', 'Пропустити її'], 0,
     'Обравши поріг самостійно, ви тихо вигадуєте вимогу і гарантуєте суперечку на прийманні.'],
-]);
+], dumpJuniorEn);
 
 export const dumpMiddleQuestions = defineQuestions('middle', 'practice-dump', [
   ['DP-M-001', 'auto-api',
@@ -202,4 +203,4 @@ export const dumpMiddleQuestions = defineQuestions('middle', 'practice-dump', [
     'Сервіс не відповідає. Яка одна команда дає найбільшу діагностичну цінність одразу?',
     ['journalctl -u <service> -n 200 --no-pager (або tail його лога)', 'ls -la /', 'df -h', 'whoami'], 0,
     'Останні рядки лога зазвичай прямо називають збій; перевірка диска й користувача йде після того, як лог нічого не пояснив.'],
-]);
+], dumpMiddleEn);

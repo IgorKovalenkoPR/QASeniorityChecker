@@ -9,7 +9,14 @@ import {
   buildVariants,
   variantUsage,
 } from '@qasc/core';
-import { QUESTION_BANK, QUESTION_BY_ID, VARIANTS, bankStats, validateBank } from '../src/index.js';
+import {
+  QUESTION_BANK,
+  QUESTION_BY_ID,
+  VARIANTS,
+  bankStats,
+  untranslatedQuestionIds,
+  validateBank,
+} from '../src/index.js';
 
 describe('question bank', () => {
   it('passes its own structural validation', () => {
@@ -57,9 +64,56 @@ describe('question bank', () => {
     }
   });
 
+  it('has an English side for every question', () => {
+    // The bank was written Ukrainian-first and the translation landed file by
+    // file. A question with no translation falls back to its Ukrainian text,
+    // which keeps the test working and is exactly why this has to be asserted:
+    // an English-speaking candidate would meet a Ukrainian question and
+    // nothing would look broken.
+    expect(untranslatedQuestionIds()).toEqual([]);
+  });
+
+  it('does not pass off the Ukrainian text as the English one', () => {
+    // Catches the other half of the same failure: a translation file that
+    // exists but was filled in by copying the source across.
+    //
+    // Identical strings are only suspicious when the Ukrainian side actually
+    // contains Ukrainian. Plenty of options are SQL, HTML tags, defect statuses
+    // or ISTQB names that are the same in both languages by nature, and a test
+    // that flagged those would have to be silenced - at which point it stops
+    // catching the real thing.
+    const cyrillic = /[а-яїієґА-ЯЇІЄҐ]/;
+    const copied: string[] = [];
+    for (const q of QUESTION_BANK) {
+      if (q.text.en === q.text.uk && cyrillic.test(q.text.uk)) copied.push(q.id);
+      if (q.explanation.en === q.explanation.uk && cyrillic.test(q.explanation.uk)) {
+        copied.push(`${q.id} (explanation)`);
+      }
+      for (const o of q.options) {
+        if (o.text.en === o.text.uk && cyrillic.test(o.text.uk)) copied.push(`${q.id}/${o.id}`);
+      }
+    }
+    expect(copied).toEqual([]);
+  });
+
+  it('leaves no Ukrainian text on the English side', () => {
+    // The failure this catches is a half-translated string - an option rendered
+    // into English with one Ukrainian clause left in it, which no length or
+    // presence check would notice.
+    const cyrillic = /[а-яїієґА-ЯЇІЄҐ]/;
+    const leaked = QUESTION_BANK.filter(
+      (q) =>
+        cyrillic.test(q.text.en) ||
+        cyrillic.test(q.explanation.en) ||
+        q.options.some((o) => cyrillic.test(o.text.en)),
+    ).map((q) => q.id);
+    expect(leaked).toEqual([]);
+  });
+
   it('gives every question an explanation the candidate can learn from', () => {
     for (const q of QUESTION_BANK) {
-      expect(q.explanation.length, q.id).toBeGreaterThan(40);
+      expect(q.explanation.uk.length, `${q.id} uk`).toBeGreaterThan(40);
+      expect(q.explanation.en.length, `${q.id} en`).toBeGreaterThan(40);
     }
   });
 });

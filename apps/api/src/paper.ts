@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Question } from '@qasc/core';
+import type { LocalizedText } from '@qasc/core';
 import { createRng, shuffle } from '@qasc/core';
 import { QUESTION_BY_ID, VARIANT_BY_NUMBER } from '@qasc/content';
 import { config } from './config.js';
@@ -57,8 +58,16 @@ export function resolveOptionIds(
 export interface PaperQuestion {
   id: string;
   index: number;
-  text: string;
-  options: { id: string; text: string }[];
+  /**
+   * Both languages travel to the browser, and the browser picks.
+   *
+   * The alternative - the client telling the server its locale - would have made
+   * the paper depend on a preference, so switching language mid-test would need a
+   * round trip and could hand out a different paper. Two short strings per option
+   * is a cheap way to make the language a purely local choice.
+   */
+  text: LocalizedText;
+  options: { id: string; text: LocalizedText }[];
   multiSelect: boolean;
   /**
    * Tier and competency are included so the candidate can see what a question is

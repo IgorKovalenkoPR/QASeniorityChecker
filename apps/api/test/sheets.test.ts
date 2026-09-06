@@ -54,8 +54,8 @@ async function takeTest(app: FastifyInstance, howMany: number) {
     const source = QUESTION_BY_ID.get(questionId)!;
     const paper = started.questions.find((q: { id: string }) => q.id === questionId);
     const optionIds = source.correctOptionIds.map((correctId) => {
-      const text = source.options.find((o) => o.id === correctId)!.text;
-      return paper.options.find((o: { text: string }) => o.text === text).id;
+      const text = source.options.find((o) => o.id === correctId)!.text.uk;
+      return paper.options.find((o: { text: { uk: string } }) => o.text.uk === text).id;
     });
     await app.inject({
       method: 'PUT',

@@ -1,4 +1,5 @@
 import { defineQuestions } from '../define.js';
+import { seniorCtalTmEn } from './senior-istqb-ctal-tm.en.js';
 
 /**
  * ISTQB Advanced Level - Test Manager (CTAL-TM), рівень Senior.
@@ -136,4 +137,4 @@ export const seniorCtalTmQuestions = defineQuestions('senior', 'istqb-ctal-tm', 
     'Який аргумент найсильніше свідчить на користь відстеження прослизлих дефектів за першопричиною?',
     ['Це показує, який гейт процесу не спрацьовує і куди інвестувати далі', 'Це виявляє, хто з тестувальників їх пропустив', 'Це зменшує кількість дефектів', 'Це задовольняє замовника'], 0,
     'Першопричини в розрізі гейтів перетворюють список дефектів на беклог покращень.'],
-]);
+], seniorCtalTmEn);
