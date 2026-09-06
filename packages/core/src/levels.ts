@@ -17,6 +17,15 @@ import type { Level, Tier } from './types.js';
  *   Senior       "red >= 50, and all Middle (yellow) items >= 75"    (+ ISTQB Advanced)
  *
  * Trainee- is the floor: it is awarded when no other rule passes.
+ *
+ * READING THE SHEET AS A LADDER. Each row names only its own colour and, at
+ * most, the one below - "yellow >= 50, and all Junior (green) items 75" says
+ * nothing about grey. Taken rule by rule in isolation that lets a paper with
+ * nothing on the lower tiers satisfy an upper row outright, which is not what a
+ * promotion ladder means and not how the sheet is used in a review: nobody
+ * reads row Senior as reachable by someone who cannot do Trainee work. So the
+ * requirements are cumulative - see `resolveLevel`. The thresholds below are
+ * still the sheet's own numbers, unchanged; only their composition is fixed.
  */
 export interface LevelRule {
   level: Level;
@@ -29,9 +38,9 @@ export interface LevelRule {
 }
 
 /**
- * Ordered weakest -> strongest. `resolveLevel` walks this backwards and awards
- * the first rung whose thresholds are all satisfied, so a candidate can never
- * skip a rung by acing the senior questions while failing the basics.
+ * Ordered weakest -> strongest, and the order is load-bearing: `resolveLevel`
+ * walks it upwards and stops at the first rung that fails, so every rung
+ * carries the requirements of all the rungs beneath it.
  */
 export const LEVEL_RULES: readonly LevelRule[] = [
   {
@@ -105,13 +114,32 @@ function satisfies(rule: LevelRule, percents: Record<Tier, number>): boolean {
   );
 }
 
-/** Highest rung whose thresholds are all met. Always returns something. */
+/**
+ * The highest rung reached without skipping one. Always returns something.
+ *
+ * Walks upwards and stops at the first rule that fails, awarding the rung below
+ * it. Requirements are therefore cumulative, which is what makes the ladder a
+ * ladder: Senior demands the Middle, Junior and Trainee bars as well as its
+ * own.
+ *
+ * This replaces taking the highest INDIVIDUALLY satisfied rule, which allowed a
+ * rung to be skipped outright. The `senior` row names only red >= 50 and
+ * yellow >= 75, so a paper scoring 0% on trainee, 0% on junior, 83% on middle
+ * and 50% on senior was awarded Senior - a profile no reviewer would call
+ * Senior, and one the ladder was documented as making impossible.
+ *
+ * A useful side effect: the rung immediately above the award is now, by
+ * construction, exactly the rule that blocked it, so `describeGap` names the
+ * real obstacle rather than an arbitrary higher row.
+ */
 export function resolveLevel(percents: Record<Tier, number>): LevelRule {
-  for (let i = LEVEL_RULES.length - 1; i >= 0; i -= 1) {
-    const rule = LEVEL_RULES[i]!;
-    if (satisfies(rule, percents)) return rule;
+  // LEVEL_RULES[0] is the floor and requires nothing, so this always holds.
+  let awarded = LEVEL_RULES[0]!;
+  for (const rule of LEVEL_RULES) {
+    if (!satisfies(rule, percents)) break;
+    awarded = rule;
   }
-  return LEVEL_RULES[0]!;
+  return awarded;
 }
 
 /** The rung immediately above the awarded one, if any. */

@@ -295,3 +295,31 @@ result line can be mapped back to the source.
 The estimated level is a **starting point for the Performance Review conversation, not a decision**.
 Twenty questions cannot cover 60 competency rows; the result page says so, and names the specific
 rows the paper actually touched.
+
+### The ladder is cumulative, and that has teeth
+
+Each row of the sheet names only its own colour and, at most, the one below - the Senior row says
+"red >= 50, and all Middle (yellow) items >= 75" and nothing about grey or green. Read row by row
+in isolation, that let a paper scoring 0% on Trainee and 0% on Junior be awarded **Senior** purely
+on its Middle and Senior answers. `resolveLevel` therefore walks the rungs upwards and stops at
+the first one that fails, so every rung carries the requirements of all the rungs beneath it. No
+threshold was changed to do this; the sheet's numbers are still the sheet's numbers.
+
+The consequence is worth knowing before you read pilot results, because the lower tiers are now
+hard gates and they are short:
+
+| Trainee score | Highest rung reachable | Junior score | Highest rung reachable |
+| --- | --- | --- | --- |
+| 0 / 4 | Trainee&minus; | 0-1 / 6 | Junior&minus; |
+| 1 / 4 | Trainee | 2 / 6 | Junior |
+| 2 / 4 | **Junior** | 3-4 / 6 | **Junior+** |
+| 3-4 / 4 | Senior | 5-6 / 6 | Senior |
+
+So two careless misses among the four Trainee questions cap an otherwise strong candidate at
+Junior, whatever they scored above. Across all 1225 score combinations the 4/6/6/4 blueprint can
+produce, this reading moves 320 of them (26%) down at least one rung, and none up.
+
+That is the correct behaviour for a ladder, but it puts real weight on the Trainee and Junior
+questions being unambiguous. **During the pilot, watch specifically for a strong tester capped by
+one or two low-tier misses** - that points at a bad question rather than a weak candidate, and the
+result page's "next rung" line names the exact tier and threshold that blocked them.
