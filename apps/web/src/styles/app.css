@@ -44,10 +44,19 @@ h4 { font-size: var(--fs-h4); font-weight: var(--fw-semibold); }
 p { margin: 0 0 var(--sp-4); }
 p:last-child { margin-bottom: 0; }
 
+/* The brand primary is near-black, so a link cannot be told from body copy by
+   colour alone. The underline is therefore mandatory and carries the link
+   affordance (WCAG 1.4.1 Use of Color); hover adds the accent hue on top. */
 a {
   color: var(--brand-primary);
+  text-decoration-line: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--accent-ink);
+  text-decoration-thickness: 2px;
 }
 
 :focus-visible {
@@ -153,7 +162,8 @@ a {
   min-height: 44px;
   padding: var(--sp-3) var(--sp-5);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  /* TestFort's own .btn is border-radius: 200px — a pill. */
+  border-radius: var(--radius-pill);
   font: inherit;
   font-weight: var(--fw-semibold);
   cursor: pointer;
@@ -186,11 +196,13 @@ a {
 .btn--ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--ink-body); }
 
 .btn--accent {
-  /* Rests on the darker accent: #E4610F on white is 3.49:1 and fails AA. */
-  background: var(--accent-hover);
-  color: var(--brand-on-primary);
+  /* The real brand coral, at full strength — but with NEAR-BLACK text.
+     #111111 on #FF865C is 7.93:1; white on it would be 2.38:1 and fail AA,
+     which is what testfort.com's own .btn.orange does. */
+  background: var(--accent);
+  color: var(--accent-on-fill);
 }
-.btn--accent:hover:not(:disabled) { background: var(--accent); }
+.btn--accent:hover:not(:disabled) { background: var(--accent-hover); }
 
 /* ---------------------------------------------------------------- fields -- */
 
@@ -236,6 +248,9 @@ a {
   overflow: hidden;
 }
 
+/* Stays on the brand black (16.66:1 against the track). The coral would only
+   reach 2.10:1 against --surface-2 and fails the 3:1 non-text requirement, so
+   it is not used for the progress fill. */
 .progress__fill {
   height: 100%;
   background: var(--brand-primary);
@@ -321,11 +336,15 @@ a {
 
 .option:hover { border-color: var(--brand-primary); background: var(--brand-primary-tint); }
 
+/* Hover is cool (brand light), selection is warm (accent tint): the two states
+   differ in hue as well as in the inset bar, so hovering an unselected option
+   can never be mistaken for having chosen it. The ≥3:1 boundary is carried by
+   the near-black border (18.88:1), not by the coral. */
 .option--selected {
   border-color: var(--brand-primary);
-  background: var(--brand-primary-tint);
+  background: var(--accent-soft);
   /* A second, non-colour indicator so selection does not rely on hue alone. */
-  box-shadow: inset 3px 0 0 var(--brand-primary);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .option--correct {
@@ -340,6 +359,8 @@ a {
   box-shadow: inset 3px 0 0 var(--danger);
 }
 
+/* accent-color stays on the brand black: a coral radio dot would sit at 2.38:1
+   against the white option surface and fail 1.4.11 for a UI component state. */
 .option input { margin-top: 3px; accent-color: var(--brand-primary); }
 .option__text { flex: 1; }
 
