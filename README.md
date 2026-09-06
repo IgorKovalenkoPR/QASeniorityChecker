@@ -212,17 +212,31 @@ the option ids of every paper in flight. The process refuses to start in product
 
 ---
 
-## Two things to settle before this ships
+## One thing to settle before this ships
 
-**1. The brand colours are inferred, not TestFort's.** `testfort.com` is unreachable from the
-environment this was built in (egress policy blocked it, and so did the brand-asset fallbacks), so
-the palette is a coherent, contrast-validated system built to TestFort's stated visual direction —
-not its actual style guide. All six brand values sit in one clearly marked block at the top of
-`apps/web/src/styles/tokens.css`; replacing them rethemes the whole application. Everything else in
-the palette derives from them, and the contrast ratios in `docs/design-system.md` were computed, not
-estimated — three colours were darkened specifically to pass WCAG AA.
+**The palette is TestFort's own, read from the live site.** The six brand values sit in one clearly
+marked block at the top of `apps/web/src/styles/tokens.css`, and they are no longer inferred:
+`testfort.com` declares them outright in the CSS it serves (`--color-black #111111`,
+`--color-grey #464646`, `--color-light #E6EEF3`, `--color-red #FF3333`, and `--color-yellow #FF865C`,
+which is named "yellow" but is in fact the brand coral). The same stylesheet shows what the brand
+does with them: `.btn` is `#111111` with a white 18px/500 label and `border-radius: 200px`, while
+`.btn.orange` swaps in a coral gradient. So the primary call to action is black and the coral is an
+accent, which is how `--brand-primary` is mapped.
 
-**2. The product is in Ukrainian; a few things stay English on purpose.** The question bank, the
+One measured constraint shapes the rest: `#FF865C` on white is **2.38:1**, which fails WCAG AA both
+as text and as a fill under white text, while `#111111` on that same coral is **7.93:1**. The coral
+is therefore a fill-only colour carried under near-black text, and the two jobs that genuinely need
+a coral passing AA — accent-as-text and the focus ring — use `#B84520` (**5.37:1** on white). Every
+ratio in `docs/design-system.md` §9 is computed rather than estimated, and it records which colours
+were darkened and why.
+
+What is still open is the **typeface**. TestFort sets Poppins; this app is on Inter. Poppins is not
+a system face, so it needs self-hosting, and its digits are not tabular — the timer and the score
+counters would jitter without an explicit `font-variant-numeric: tabular-nums` and an audit of the
+numeric blocks. The suggestion on the table is Poppins for `--font-display` only, keeping Inter for
+UI and body text, but nothing has been changed pending that decision.
+
+**The product is in Ukrainian; a few things stay English on purpose.** The question bank, the
 interface, the result report and the reviewer's variant document are all Ukrainian. Three things are
 deliberately not translated: the nine ladder names (Trainee− … Senior) and the ISTQB certification
 names, because those are what people actually say at the review; the English wording quoted inside
