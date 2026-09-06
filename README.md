@@ -114,8 +114,10 @@ duplicated request or an out-of-order delivery all converge on the same answer.
 
 ### Why the answer key never reaches the browser
 
-1. Correct answers live in `@qasc/content`, which the API imports and the web bundle does not. There
-   is a test asserting the built bundle contains no question ids and no key.
+1. Correct answers live in `@qasc/content`, which the API imports and the web bundle does not.
+   `npm run check:bundle` greps the *built* artefact for question ids and explanation text and fails
+   if any appear, so a stray `import { QUESTION_BANK }` in a React component cannot slip through
+   review. CI runs it on every pull request.
 2. Every attempt receives **its own opaque option ids**, derived as
    `HMAC(secret, attemptId | questionId | optionId)`. A leaked "V07 Q3 = c" is worthless in any other
    attempt, and there is no small id space to brute-force — the client can only echo back ids the
@@ -181,10 +183,16 @@ The image runs the API directly instead of the root `npm start`: that script
 rebuilds the SPA first, and the build tooling is pruned from the runtime image.
 
 ```bash
-npm test               # 81 tests
-npm run typecheck
+npm test                  # 81 tests
+npm run typecheck         # solution build, plus apps/web separately
+npm run build
+npm run check:bundle      # answer key must not be in the built SPA (needs a build first)
 npm run export:variants   # regenerate docs/variants.md
 ```
+
+CI runs all of the above on every pull request, and additionally checks that `docs/variants.md`
+still regenerates byte for byte — a diff there means either the bank changed without the document
+being regenerated, or variant generation stopped being deterministic.
 
 ### Configuration
 
