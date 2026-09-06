@@ -7,7 +7,7 @@ export interface TestScreenProps {
   questions: PaperQuestion[];
   answers: Record<string, string[]>;
   secondsRemaining: number;
-  saving: boolean;
+  saveStatus: { pending: number; retrying: boolean };
   warning: string | null;
   strikesRemaining: number;
   onSelect: (questionId: string, optionIds: string[]) => void;
@@ -20,7 +20,7 @@ export function TestScreen({
   questions,
   answers,
   secondsRemaining,
-  saving,
+  saveStatus,
   warning,
   strikesRemaining,
   onSelect,
@@ -71,7 +71,14 @@ export function TestScreen({
             <span className="badge badge--neutral">Варіант {attempt.variantNumber}</span>
           </div>
           <div className="row">
-            {saving ? <span className="small muted">Зберігаємо...</span> : null}
+            {saveStatus.pending > 0 && !saveStatus.retrying ? (
+              <span className="small muted">Зберігаємо...</span>
+            ) : null}
+            {saveStatus.retrying ? (
+              <span className="small" style={{ color: 'var(--warning-ink)', fontWeight: 500 }}>
+                Не збережено - повторюємо
+              </span>
+            ) : null}
             <Timer seconds={secondsRemaining} />
           </div>
         </div>
@@ -79,6 +86,14 @@ export function TestScreen({
           <Progress answered={answeredCount} total={questions.length} />
         </div>
       </Card>
+
+      {saveStatus.retrying ? (
+        <Banner tone="warning" title="Звʼязок із сервером нестабільний.">
+          Останні відповіді ще не збереглися, і ми повторюємо спроби надіслати їх. Спробу це не
+          завершує, а таймер іде на сервері. Не закривайте сторінку - щойно звʼязок відновиться,
+          відповіді дійдуть самі.
+        </Banner>
+      ) : null}
 
       {warning ? (
         <Banner tone="warning" title="Попередження про порушення">
