@@ -15,18 +15,18 @@ import { COMPETENCY_BY_ID, TIERS } from '@qasc/core';
 import { QUESTION_BANK, QUESTION_BY_ID, VARIANTS, bankStats, validateBank } from '@qasc/content';
 
 const SOURCE_LABELS: Record<string, string> = {
-  'pr-matrix': 'Performance Review matrix',
+  'pr-matrix': 'Матриця Performance Review',
   'istqb-ctfl': 'ISTQB Foundation Level',
   'istqb-ctal-ta': 'ISTQB Test Analyst',
   'istqb-ctal-tm': 'ISTQB Test Manager',
-  'istqb-glossary': 'ISTQB Glossary',
-  'practice-dump': 'Practice-test style',
+  'istqb-glossary': 'Глосарій ISTQB',
+  'practice-dump': 'Практичний формат',
 };
 
 function main(): void {
   const problems = validateBank();
   if (problems.length > 0) {
-    console.error('Question bank is invalid:');
+    console.error('Банк питань невалідний:');
     for (const problem of problems) console.error(`  - ${problem}`);
     process.exit(1);
   }
@@ -35,24 +35,24 @@ function main(): void {
   const stats = bankStats();
   const lines: string[] = [];
 
-  lines.push('# Test variants - answer key');
+  lines.push('# Варіанти тестів - з правильними відповідями');
   lines.push('');
-  lines.push('> **Internal document.** Contains the correct answer for every question.');
-  lines.push('> Do not circulate to anyone who may take the test.');
+  lines.push('> **Внутрішній документ.** Містить правильну відповідь на кожне питання.');
+  lines.push('> Не поширюйте серед тих, хто може проходити тест.');
   lines.push('');
-  lines.push(`Generated from the question bank by \`npm run export:variants\`.`);
-  lines.push('The variants are deterministic, so an unchanged bank regenerates this file byte for byte.');
+  lines.push('Згенеровано з банку питань командою `npm run export:variants`.');
+  lines.push('Варіанти детерміновані, тож незмінний банк відтворює цей файл байт у байт.');
   lines.push('');
-  lines.push('## Bank summary');
+  lines.push('## Зведення по банку');
   lines.push('');
-  lines.push(`- Questions in the bank: **${stats.total}**`);
-  lines.push(`- Papers: **${VARIANTS.length}**, each of **${VARIANTS[0]?.questionIds.length ?? 0}** questions`);
+  lines.push(`- Питань у банку: **${stats.total}**`);
+  lines.push(`- Варіантів: **${VARIANTS.length}**, у кожному по **${VARIANTS[0]?.questionIds.length ?? 0}** питань`);
   lines.push('');
-  lines.push('| Tier | Questions in bank |');
+  lines.push('| Рівень | Питань у банку |');
   lines.push('| --- | --- |');
   for (const tier of TIERS) lines.push(`| ${tier} | ${stats.byTier[tier]} |`);
   lines.push('');
-  lines.push('| Source | Questions in bank |');
+  lines.push('| Джерело | Питань у банку |');
   lines.push('| --- | --- |');
   for (const [source, count] of Object.entries(stats.bySource)) {
     lines.push(`| ${SOURCE_LABELS[source] ?? source} | ${count} |`);
@@ -65,15 +65,15 @@ function main(): void {
   }
   const counts = [...usage.values()];
   lines.push(
-    `Question reuse across the 50 papers: min ${Math.min(...counts)}, max ${Math.max(...counts)}, ` +
-      `${usage.size} of ${QUESTION_BANK.length} questions in play.`,
+    `Повторюваність питань у ${VARIANTS.length} варіантах: мін. ${Math.min(...counts)}, ` +
+      `макс. ${Math.max(...counts)}; задіяно ${usage.size} із ${QUESTION_BANK.length} питань.`,
   );
   lines.push('');
   lines.push('---');
   lines.push('');
 
   for (const variant of VARIANTS) {
-    lines.push(`## Variant ${variant.number}`);
+    lines.push(`## Варіант ${variant.number}`);
     lines.push('');
     variant.questionIds.forEach((id, index) => {
       const q = QUESTION_BY_ID.get(id);
@@ -86,7 +86,7 @@ function main(): void {
       );
       lines.push('');
       for (const option of q.options) {
-        const marker = q.correctOptionIds.includes(option.id) ? '**(correct)**' : '';
+        const marker = q.correctOptionIds.includes(option.id) ? '**(правильна)**' : '';
         lines.push(`- ${option.id}) ${option.text} ${marker}`.trimEnd());
       }
       lines.push('');
@@ -99,7 +99,7 @@ function main(): void {
 
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, `${lines.join('\n')}\n`, 'utf8');
-  console.log(`Wrote ${VARIANTS.length} variants (${lines.length} lines) to ${target}`);
+  console.log(`Записано ${VARIANTS.length} варіантів (${lines.length} рядків) у ${target}`);
 }
 
 main();

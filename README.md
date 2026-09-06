@@ -16,7 +16,7 @@ skill rows, with each row's seniority tier read from its fill colour.
 | --- | --- |
 | **Questions per test** | 20 |
 | **Test variants** | 50, fixed and deterministic |
-| **Question bank** | 516 questions |
+| **Question bank** | 504 questions, in Ukrainian |
 | **Tier split per paper** | 4 Trainee · 6 Junior · 6 Middle · 4 Senior |
 | **Time limit** | 30 minutes, enforced by the server |
 | **Result** | One of 9 rungs, plus per-tier and per-competency breakdown |
@@ -25,7 +25,7 @@ skill rows, with each row's seniority tier read from its fill colour.
 
 | Source | Questions | Asked at |
 | --- | --- | --- |
-| Performance Review matrix | 288 | every tier |
+| Performance Review matrix | 276 | every tier |
 | ISTQB Foundation Level (CTFL v4.0) | 42 | Junior |
 | ISTQB Advanced — Test Analyst (CTAL-TA) | 64 | Middle and Senior |
 | ISTQB Advanced — Test Manager (CTAL-TM) | 32 | Senior |
@@ -38,7 +38,21 @@ and ISTQB Advanced Level as a Senior one.
 > The practice-test questions are **original**, written in the format used by the well-known public
 > quiz banks. Nothing is reproduced from a commercial question set — public dumps carry both a
 > copyright problem and a quality problem, since many of their published answers are wrong or
-> describe superseded syllabus versions.
+> describe superseded syllabus versions. The ISTQB questions are likewise original formulations
+> that test syllabus concepts, not reproductions of syllabus or exam text.
+
+### What the test deliberately does not ask
+
+Three groups of Performance Review rows carry no questions:
+
+- **Books** and **Certification/courses** — whether someone has read *Peopleware* or holds a CTFL
+  certificate is evidence gathered during the review itself.
+- **Customer communication** — the presale row, the "emails to a customer" row and the
+  customer-facing report row. Talking to a client is judged on a call, not on a multiple-choice
+  question, and a written test that pretends otherwise makes the result less trustworthy.
+
+The competency rows stay in `packages/core/src/competencies.ts` so the matrix remains fully
+transcribed; they simply have no questions attached.
 
 ---
 
@@ -117,7 +131,7 @@ duplicated request or an out-of-order delivery all converge on the same answer.
 ```
 packages/core      Domain: tiers, the 9-rung ladder, scoring, integrity policy,
                    deterministic variant builder. No I/O, no framework.
-packages/content   The 516-question bank + the 50 generated papers.
+packages/content   The 504-question bank (Ukrainian) + the 50 generated papers.
 apps/api           Fastify + SQLite. Owns the clock, the key and the verdict.
 apps/web           React + Vite SPA. Reports; never decides.
 ```
@@ -182,21 +196,18 @@ not its actual style guide. All six brand values sit in one clearly marked block
 the palette derives from them, and the contrast ratios in `docs/design-system.md` were computed, not
 estimated — three colours were darkened specifically to pass WCAG AA.
 
-**2. The questions are in English.** The Performance Review sheet supplied is the English copy, ISTQB
-terminology is English, and the matrix itself lists *"Creating defect reports (in English)"* and
-*"Can read and understand test documentation"* as assessed competencies. A Ukrainian translation of
-the bank is a mechanical addition — every question carries a stable id — but it is a decision about
-what the test measures, not a formatting choice, so it was left to you.
+**2. The product is in Ukrainian; a few things stay English on purpose.** The question bank, the
+interface, the result report and the reviewer's variant document are all Ukrainian. Three things are
+deliberately not translated: the nine ladder names (Trainee− … Senior) and the ISTQB certification
+names, because those are what people actually say at the review; the English wording quoted inside
+the *"Can read and understand test documentation"* and *"Creating defect reports (in English)"*
+questions, because reading and writing English is the competency being measured there; and each
+competency's `sheetRow` field, which keeps the original English spreadsheet row verbatim so any
+result line can be mapped back to the source.
 
 ---
 
 ## Scope note
-
-Three sections of the Performance Review sheet are intentionally absent from the question bank:
-**Books**, **Certification/courses** and the conversational **English** rows. Whether someone has
-read *Peopleware*, holds a CTFL certificate, or can hold a customer call is evidence gathered during
-the review itself — a written knowledge test cannot establish any of it, and pretending otherwise
-would make the result less trustworthy, not more.
 
 The estimated level is a **starting point for the Performance Review conversation, not a decision**.
 Twenty questions cannot cover 60 competency rows; the result page says so, and names the specific

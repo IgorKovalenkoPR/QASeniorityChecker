@@ -28,7 +28,7 @@ describe('integrity policy', () => {
       { type: 'window_blur', occurredAt: at(10_000), durationMs: 3_000 },
     ]);
     expect(verdict.terminate).toBe(true);
-    expect(verdict.reason).toContain('lost focus');
+    expect(verdict.reason).toContain('втратило фокус');
   });
 
   it('ends the attempt on a single long absence', () => {
@@ -38,7 +38,7 @@ describe('integrity policy', () => {
       { type: 'visibility_hidden', occurredAt: at(0), durationMs: 15_000 },
     ]);
     expect(verdict.terminate).toBe(true);
-    expect(verdict.reason).toContain('hidden');
+    expect(verdict.reason).toContain('приховано');
   });
 
   it('ends the attempt immediately when the page is navigated away from', () => {
@@ -49,7 +49,7 @@ describe('integrity policy', () => {
   it('ends the attempt when the same attempt is opened twice', () => {
     const verdict = evaluateIntegrity([{ type: 'duplicate_session', occurredAt: at(0) }]);
     expect(verdict.terminate).toBe(true);
-    expect(verdict.reason).toContain('another tab');
+    expect(verdict.reason).toContain('іншій вкладці');
   });
 
   it('records but does not punish copy, paste and right-click', () => {

@@ -38,60 +38,60 @@ export const LEVEL_RULES: readonly LevelRule[] = [
     level: 'trainee_minus',
     label: 'Trainee-',
     requires: {},
-    rationale: 'Below the Trainee threshold: fewer than 25% of the Trainee-tier questions answered correctly.',
+    rationale: 'Нижче порога Trainee: правильних відповідей на питання рівня Trainee менше ніж 25%.',
   },
   {
     level: 'trainee',
     label: 'Trainee',
     requires: { trainee: 25 },
-    rationale: 'Each skill item of the current level ("grey") has at least 25 points.',
+    rationale: 'Кожен пункт навичок поточного рівня ("сірий") має щонайменше 25 балів.',
   },
   {
     level: 'junior_minus',
     label: 'Junior-',
     requires: { trainee: 50 },
-    rationale: 'Each skill item of the current level ("grey") has at least 50 points.',
+    rationale: 'Кожен пункт навичок поточного рівня ("сірий") має щонайменше 50 балів.',
   },
   {
     level: 'junior',
     label: 'Junior',
     requires: { junior: 25, trainee: 50 },
     rationale:
-      'Each skill item of the current level ("green") has at least 25 points, and all Trainee-level ("grey") items have 50. Confirmation also expects ISTQB Foundation Level.',
+      'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 25 балів, а всі пункти рівня Trainee ("сірий") - 50. Підтвердження рівня також очікує ISTQB Foundation Level.',
   },
   {
     level: 'junior_plus',
     label: 'Junior+',
     requires: { junior: 50, trainee: 75 },
     rationale:
-      'Each skill item of the current level ("green") has at least 50 points, and all Trainee-level ("grey") items have 75.',
+      'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 50 балів, а всі пункти рівня Trainee ("сірий") - 75.',
   },
   {
     level: 'middle_minus',
     label: 'Middle-',
     requires: { junior: 75, trainee: 75 },
-    rationale: 'Each skill item of the current level ("green") has at least 75 points.',
+    rationale: 'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 75 балів.',
   },
   {
     level: 'middle',
     label: 'Middle',
     requires: { middle: 50, junior: 75 },
     rationale:
-      'Each skill item of the current level ("yellow") has at least 50 points, and all Junior-level ("green") items have 75.',
+      'Кожен пункт навичок поточного рівня ("жовтий") має щонайменше 50 балів, а всі пункти рівня Junior ("зелений") - 75.',
   },
   {
     level: 'middle_plus',
     label: 'Middle+',
     requires: { senior: 25, middle: 75 },
     rationale:
-      'Each skill item of the Senior level ("red") has at least 25 points, and all Middle-level ("yellow") items have at least 75.',
+      'Кожен пункт навичок рівня Senior ("червоний") має щонайменше 25 балів, а всі пункти рівня Middle ("жовтий") - щонайменше 75.',
   },
   {
     level: 'senior',
     label: 'Senior',
     requires: { senior: 50, middle: 75 },
     rationale:
-      'Each skill item of the current level ("red") has at least 50 points, and all Middle-level ("yellow") items have at least 75. Confirmation also expects ISTQB Advanced Level.',
+      'Кожен пункт навичок поточного рівня ("червоний") має щонайменше 50 балів, а всі пункти рівня Middle ("жовтий") - щонайменше 75. Підтвердження рівня також очікує ISTQB Advanced Level.',
   },
 ] as const;
 
@@ -126,7 +126,7 @@ export function describeGap(level: Level, percents: Record<Tier, number>): strin
   if (!next) return null;
   const missing = Object.entries(next.requires)
     .filter(([tier, min]) => percents[tier as Tier] < (min as number))
-    .map(([tier, min]) => `${tier} tier ${percents[tier as Tier].toFixed(0)}% -> needs ${min}%`);
+    .map(([tier, min]) => `рівень ${tier}: ${percents[tier as Tier].toFixed(0)}% -> потрібно ${min}%`);
   if (missing.length === 0) return null;
-  return `To reach ${next.label}: ${missing.join('; ')}.`;
+  return `Щоб досягти ${next.label}: ${missing.join('; ')}.`;
 }

@@ -52,7 +52,7 @@ export interface ProctorOptions {
 }
 
 const AWAY_MESSAGE =
-  'You left the test page. The attempt ends if this happens again or lasts more than a few seconds.';
+  'Ви залишили сторінку тесту. Спроба завершиться, якщо це повториться або триватиме довше за кілька секунд.';
 
 export class Proctor {
   private readonly options: ProctorOptions;

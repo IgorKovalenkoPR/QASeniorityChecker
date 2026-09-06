@@ -58,12 +58,12 @@ export function TestScreen({
         <div className="row row--between">
           <div className="row">
             <strong>
-              Question {index + 1} / {questions.length}
+              Питання {index + 1} / {questions.length}
             </strong>
-            <span className="badge badge--neutral">Variant {attempt.variantNumber}</span>
+            <span className="badge badge--neutral">Варіант {attempt.variantNumber}</span>
           </div>
           <div className="row">
-            {saving ? <span className="small muted">Saving...</span> : null}
+            {saving ? <span className="small muted">Зберігаємо...</span> : null}
             <Timer seconds={secondsRemaining} />
           </div>
         </div>
@@ -73,13 +73,12 @@ export function TestScreen({
       </Card>
 
       {warning ? (
-        <Banner tone="warning" title="Integrity warning">
+        <Banner tone="warning" title="Попередження про порушення">
           {warning}
           {strikesRemaining > 0 ? (
             <>
               {' '}
-              You have {strikesRemaining} {strikesRemaining === 1 ? 'warning' : 'warnings'} left before
-              the attempt ends.
+              Залишилося попереджень до завершення спроби: {strikesRemaining}.
             </>
           ) : null}
         </Banner>
@@ -89,7 +88,9 @@ export function TestScreen({
         <div className="question__meta">
           <TierBadge tier={question.tier} />
           <span className="badge badge--neutral">{SOURCE_LABELS[question.source] ?? question.source}</span>
-          {question.multiSelect ? <span className="badge badge--neutral">Select all that apply</span> : null}
+          {question.multiSelect ? (
+            <span className="badge badge--neutral">Оберіть усі правильні варіанти</span>
+          ) : null}
         </div>
 
         <h2 className="question__text">{question.text}</h2>
@@ -120,7 +121,7 @@ export function TestScreen({
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
             disabled={index === 0}
           >
-            Previous
+            Назад
           </button>
           {index < questions.length - 1 ? (
             <button
@@ -128,11 +129,11 @@ export function TestScreen({
               type="button"
               onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
             >
-              Next
+              Далі
             </button>
           ) : (
             <button className="btn btn--accent" type="button" onClick={() => setConfirming(true)}>
-              Finish and see my level
+              Завершити і побачити рівень
             </button>
           )}
         </div>
@@ -140,7 +141,7 @@ export function TestScreen({
 
       <Card>
         <h3 className="card__title" style={{ fontSize: 'var(--fs-h4)' }}>
-          Jump to a question
+          Перейти до питання
         </h3>
         <div className="pager">
           {questions.map((q, i) => {
@@ -152,7 +153,7 @@ export function TestScreen({
                 type="button"
                 className={`pager__dot ${cls}`.trim()}
                 onClick={() => setIndex(i)}
-                aria-label={`Question ${i + 1}${answered ? ', answered' : ', not answered'}`}
+                aria-label={`Питання ${i + 1}${answered ? ', є відповідь' : ', без відповіді'}`}
                 aria-current={i === index}
               >
                 {i + 1}
@@ -162,10 +163,12 @@ export function TestScreen({
         </div>
         <div className="row" style={{ marginTop: 'var(--sp-5)' }}>
           <button className="btn btn--accent" type="button" onClick={() => setConfirming(true)}>
-            Finish and see my level
+            Завершити і побачити рівень
           </button>
           <span className="small muted">
-            {unanswered === 0 ? 'All questions answered.' : `${unanswered} still unanswered.`}
+            {unanswered === 0
+              ? 'На всі питання є відповіді.'
+              : `Без відповіді ще: ${unanswered}.`}
           </span>
         </div>
       </Card>
@@ -173,18 +176,18 @@ export function TestScreen({
       {confirming ? (
         <div className="blocker" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
           <div className="blocker__panel">
-            <h2 id="confirm-title">Submit your attempt?</h2>
+            <h2 id="confirm-title">Завершити спробу?</h2>
             <p className="muted">
               {unanswered === 0
-                ? 'All 20 questions are answered. You will not be able to change them afterwards.'
-                : `${unanswered} of ${questions.length} questions are still unanswered and will be scored as incorrect.`}
+                ? `На всі ${questions.length} питань є відповіді. Змінити їх після завершення буде неможливо.`
+                : `Без відповіді лишилося ${unanswered} з ${questions.length} питань - вони будуть зараховані як неправильні.`}
             </p>
             <div className="row" style={{ justifyContent: 'center', marginTop: 'var(--sp-5)' }}>
               <button className="btn btn--ghost" type="button" onClick={() => setConfirming(false)}>
-                Keep working
+                Продовжити
               </button>
               <button className="btn btn--primary" type="button" onClick={onSubmit} disabled={submitting}>
-                {submitting ? 'Submitting...' : 'Submit'}
+                {submitting ? 'Надсилаємо...' : 'Завершити'}
               </button>
             </div>
           </div>

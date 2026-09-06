@@ -148,7 +148,7 @@ export function App() {
   const terminate = useCallback((reason: string | null) => {
     proctorRef.current?.stop();
     proctorRef.current = null;
-    setTerminationReason(reason ?? 'This attempt was ended by the exam integrity rules.');
+    setTerminationReason(reason ?? 'Цю спробу завершено за правилами чесного проходження тесту.');
     setPhase('terminated');
     writeSession(null);
   }, []);
@@ -175,9 +175,7 @@ export function App() {
           if (verdict.terminate) terminate(verdict.reason);
           else if (verdict.strikes > 0) {
             setWarning(
-              `Leaving the test page was recorded. ${verdict.remaining} ${
-                verdict.remaining === 1 ? 'warning' : 'warnings'
-              } left before the attempt ends.`,
+              `Вихід зі сторінки тесту зафіксовано. Залишилося попереджень до завершення спроби: ${verdict.remaining}.`,
             );
           }
         },
@@ -246,7 +244,7 @@ export function App() {
         setWarning(null);
         setPhase('test');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Could not start the test.');
+        setError(err instanceof Error ? err.message : 'Не вдалося почати тест.');
       } finally {
         setBusy(false);
       }
@@ -288,7 +286,7 @@ export function App() {
       if (err instanceof ApiError && err.code === 'attempt_terminated') {
         terminate(err.message);
       } else {
-        setError(err instanceof Error ? err.message : 'Could not submit the attempt.');
+        setError(err instanceof Error ? err.message : 'Не вдалося завершити спробу.');
       }
     } finally {
       setSubmitting(false);
@@ -315,17 +313,17 @@ export function App() {
     <div className="app">
       <header className="app__header">
         <div className="app__brand">
-          QA Seniority Checker <span>Performance Review pre-assessment</span>
+          QA Seniority Checker <span>попередня оцінка перед Performance Review</span>
         </div>
         <div className="app__header-right">
           {phase === 'test' && attempt ? (
-            <span className="badge badge--neutral">Variant {attempt.variantNumber}</span>
+            <span className="badge badge--neutral">Варіант {attempt.variantNumber}</span>
           ) : null}
         </div>
       </header>
 
       <main className={`app__main ${phase === 'start' ? 'app__main--narrow' : ''}`.trim()}>
-        {phase === 'loading' ? <Card>Loading...</Card> : null}
+        {phase === 'loading' ? <Card>Завантаження...</Card> : null}
 
         {phase === 'start' ? (
           <StartScreen meta={meta} onStart={(input) => void handleStart(input)} busy={busy} error={error} />
@@ -352,18 +350,18 @@ export function App() {
 
         {phase === 'terminated' ? (
           <Card hero>
-            <h1>Attempt ended</h1>
-            <Banner tone="danger" title="Exam integrity rules">
-              {terminationReason ?? 'This attempt was ended by the exam integrity rules.'}
+            <h1>Спробу завершено</h1>
+            <Banner tone="danger" title="Правила чесного проходження">
+              {terminationReason ?? 'Цю спробу завершено за правилами чесного проходження тесту.'}
             </Banner>
             <p className="muted" style={{ marginTop: 'var(--sp-5)' }}>
-              The attempt was not scored. If you believe this was a mistake - a system notification, a
-              call, or a connection drop - talk to your manager or the QA lead; every event is logged
-              with its timestamp and duration, so the record can be reviewed.
+              Спробу не оцінено. Якщо ви вважаєте, що це помилка - системне сповіщення, дзвінок або
+              обрив зʼєднання - зверніться до керівника або QA-ліда: кожна подія записана з часовою
+              міткою і тривалістю, тож запис можна переглянути.
             </p>
             <div className="row" style={{ marginTop: 'var(--sp-5)' }}>
               <button className="btn btn--primary" type="button" onClick={handleRestart}>
-                Back to the start
+                Повернутися на початок
               </button>
             </div>
           </Card>
@@ -371,7 +369,7 @@ export function App() {
       </main>
 
       <footer className="app__footer">
-        Estimated levels are a starting point for the Performance Review conversation, not a decision.
+        Орієнтовний рівень - це відправна точка для розмови на Performance Review, а не рішення.
       </footer>
     </div>
   );

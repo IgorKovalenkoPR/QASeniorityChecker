@@ -108,13 +108,13 @@ export function strikeCost(event: IntegrityEvent, policy: IntegrityPolicy): numb
 }
 
 const REASONS: Partial<Record<IntegrityEventType, string>> = {
-  visibility_hidden: 'The test tab was hidden. Switching tabs, apps or windows ends the attempt.',
-  window_blur: 'The test window lost focus. The attempt must stay in the foreground.',
-  fullscreen_exit: 'Fullscreen mode was exited.',
-  navigation_away: 'The test page was closed or navigated away from.',
-  duplicate_session: 'The same attempt was opened in another tab or browser.',
-  devtools_suspected: 'Developer tools appear to have been opened.',
-  print_attempt: 'A print or capture shortcut was used.',
+  visibility_hidden: 'Вкладку з тестом було приховано. Перемикання вкладок, застосунків або вікон завершує спробу.',
+  window_blur: 'Вікно тесту втратило фокус. Спроба має лишатися на передньому плані.',
+  fullscreen_exit: 'Повноекранний режим було вимкнено.',
+  navigation_away: 'Сторінку тесту було закрито або залишено.',
+  duplicate_session: 'Ту саму спробу було відкрито в іншій вкладці або браузері.',
+  devtools_suspected: 'Схоже, було відкрито інструменти розробника.',
+  print_attempt: 'Було використано комбінацію клавіш для друку або захоплення екрана.',
 };
 
 /**
@@ -134,7 +134,7 @@ export function evaluateIntegrity(
     if (cost === 0) continue;
     strikes += cost;
     if (strikes >= policy.terminateAtStrikes && reason === null) {
-      reason = REASONS[event.type] ?? 'Exam integrity rules were violated.';
+      reason = REASONS[event.type] ?? 'Порушено правила чесності проходження тесту.';
     }
   }
 

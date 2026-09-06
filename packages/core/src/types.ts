@@ -59,8 +59,14 @@ export type CompetencyGroup = (typeof COMPETENCY_GROUPS)[number];
 export interface Competency {
   /** Stable slug used by questions and reports. */
   id: string;
-  /** Row label exactly as it appears in the Performance Review sheet. */
+  /** Ukrainian label shown to the candidate in the result report. */
   label: string;
+  /**
+   * The row label exactly as it appears in the English Performance Review
+   * sheet. Kept verbatim so a reviewer can map any result line back to the
+   * spreadsheet row it came from, whatever the UI language is.
+   */
+  sheetRow: string;
   group: CompetencyGroup;
   /** Tier that owns this row, read from the row's fill colour. */
   tier: Tier;

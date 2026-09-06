@@ -4,12 +4,13 @@ import type { MetaResponse } from '../lib/api.js';
 import { Banner, Card } from '../components/ui.js';
 
 /**
- * Start screen.
+ * Стартовий екран.
  *
- * The integrity rules are shown in full BEFORE the timer starts and must be
- * acknowledged. That is not a legal formality: a proctoring rule a candidate
- * only discovers by tripping it is unfair, and an attempt terminated under a
- * rule nobody explained is unusable in a Performance Review conversation.
+ * Правила чесності показані повністю ДО того, як запуститься таймер, і їх треба
+ * підтвердити. Це не формальність: правило проктарингу, про яке кандидат
+ * дізнається лише порушивши його, несправедливе, а спроба, завершена за
+ * правилом, якого ніхто не пояснив, непридатна для розмови на Performance
+ * Review.
  */
 export function StartScreen({
   meta,
@@ -39,60 +40,62 @@ export function StartScreen({
   };
 
   const minutes = meta ? Math.round(meta.durationSeconds / 60) : 30;
+  const graceSec = meta ? Math.round(meta.integrity.graceMs / 1000) : 2;
+  const hardSec = meta ? Math.round(meta.integrity.hardTerminateMs / 1000) : 10;
 
   return (
     <div className="stack">
       <Card hero>
-        <h1>Check your QA seniority level</h1>
+        <h1>Перевірте свій рівень сеньйорності</h1>
         <p className="muted" style={{ marginTop: 'var(--sp-3)' }}>
-          A short self-assessment that estimates where you currently sit on the company Performance
-          Review ladder, from Trainee&minus; to Senior. The result is a starting point for planning
-          your review, not the review itself.
+          Коротка самооцінка, яка визначає, де ви зараз перебуваєте на щаблях Performance Review
+          компанії - від Trainee&minus; до Senior. Результат є відправною точкою для планування
+          вашого review, а не самим review.
         </p>
         <div className="row" style={{ marginTop: 'var(--sp-5)' }}>
-          <Fact value={meta ? String(meta.questionsPerTest) : '20'} label="questions" />
-          <Fact value={`${minutes} min`} label="time limit" />
-          <Fact value={meta ? String(meta.variantCount) : '50'} label="test variants" />
-          <Fact value={meta ? String(meta.bank.total) : '500+'} label="questions in the bank" />
+          <Fact value={meta ? String(meta.questionsPerTest) : '20'} label="питань" />
+          <Fact value={`${minutes} хв`} label="обмеження часу" />
+          <Fact value={meta ? String(meta.variantCount) : '50'} label="варіантів тесту" />
+          <Fact value={meta ? String(meta.bank.total) : '500+'} label="питань у банку" />
         </div>
       </Card>
 
       <div className="stack" style={{ gap: 'var(--sp-5)' }}>
         <Card>
-          <h2 className="card__title">What is covered</h2>
+          <h2 className="card__title">Що охоплює тест</h2>
           <p className="muted small">
-            Every paper follows the same blueprint, so two people who draw different variants are
-            still measured on the same scale.
+            Кожен варіант побудований за однією й тією самою схемою, тож двоє людей, які отримали
+            різні варіанти, все одно вимірюються за однією шкалою.
           </p>
           <div className="table__scroll">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Tier</th>
-                  <th>Questions</th>
-                  <th>Drawn from</th>
+                  <th>Рівень</th>
+                  <th>Питань</th>
+                  <th>Джерела</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td>Trainee</td>
                   <td>4</td>
-                  <td>Performance Review matrix, terminology</td>
+                  <td>Матриця Performance Review, термінологія</td>
                 </tr>
                 <tr>
                   <td>Junior</td>
                   <td>6</td>
-                  <td>Performance Review matrix, ISTQB Foundation Level, glossary</td>
+                  <td>Матриця Performance Review, ISTQB Foundation Level, глосарій</td>
                 </tr>
                 <tr>
                   <td>Middle</td>
                   <td>6</td>
-                  <td>Performance Review matrix, ISTQB Test Analyst, glossary</td>
+                  <td>Матриця Performance Review, ISTQB Test Analyst, глосарій</td>
                 </tr>
                 <tr>
                   <td>Senior</td>
                   <td>4</td>
-                  <td>Performance Review matrix, ISTQB Test Manager and Test Analyst</td>
+                  <td>Матриця Performance Review, ISTQB Test Manager і Test Analyst</td>
                 </tr>
               </tbody>
             </table>
@@ -100,30 +103,29 @@ export function StartScreen({
         </Card>
 
         <Card>
-          <h2 className="card__title">Exam integrity rules</h2>
-          <Banner tone="warning" title="The attempt ends if you leave this page.">
-            Switching to another tab, another window or another app is detected and reported. A brief
-            interruption of under {meta ? Math.round(meta.integrity.graceMs / 1000) : 2} seconds costs
-            you a warning; a second interruption, or a single absence longer than{' '}
-            {meta ? Math.round(meta.integrity.hardTerminateMs / 1000) : 10} seconds, ends the attempt
-            and the result is discarded.
+          <h2 className="card__title">Правила чесного проходження</h2>
+          <Banner tone="warning" title="Спроба завершується, якщо ви залишите цю сторінку.">
+            Перехід на іншу вкладку, в інше вікно або в інший застосунок фіксується і передається на
+            сервер. Коротке переривання до {graceSec} секунд коштує вам попередження; друге
+            переривання або одна відсутність довша за {hardSec} секунд завершує спробу, і результат
+            не зараховується.
           </Banner>
           <ul className="small muted" style={{ marginTop: 'var(--sp-4)', paddingLeft: 'var(--sp-5)' }}>
-            <li>Keep this window in the foreground for the whole test.</li>
-            <li>Close other tabs and silence notifications before you start.</li>
-            <li>Right-click, copy and print are disabled or recorded.</li>
-            <li>The timer runs on the server, so reloading the page does not reset it.</li>
-            <li>Your answers are saved as you go; a lost connection will not lose your work.</li>
+            <li>Тримайте це вікно активним протягом усього тесту.</li>
+            <li>Закрийте інші вкладки і вимкніть сповіщення перед початком.</li>
+            <li>Правий клік, копіювання і друк вимкнені або фіксуються.</li>
+            <li>Таймер працює на сервері, тож перезавантаження сторінки його не скидає.</li>
+            <li>Відповіді зберігаються по ходу: втрата зʼєднання не втратить вашу роботу.</li>
           </ul>
         </Card>
       </div>
 
       <Card>
-        <h2 className="card__title">Start the test</h2>
+        <h2 className="card__title">Почати тест</h2>
         <form className="stack" onSubmit={submit} noValidate>
           <div className="field">
             <label className="field__label" htmlFor="candidate-name">
-              Full name
+              Повне імʼя
             </label>
             <input
               id="candidate-name"
@@ -132,12 +134,14 @@ export function StartScreen({
               autoComplete="name"
               onChange={(event) => setName(event.target.value)}
             />
-            {touched && !nameValid ? <span className="field__error">Please enter your name.</span> : null}
+            {touched && !nameValid ? (
+              <span className="field__error">Будь ласка, введіть своє імʼя.</span>
+            ) : null}
           </div>
 
           <div className="field">
             <label className="field__label" htmlFor="candidate-email">
-              Work email
+              Робоча пошта
             </label>
             <input
               id="candidate-email"
@@ -148,10 +152,10 @@ export function StartScreen({
               onChange={(event) => setEmail(event.target.value)}
             />
             <span className="field__hint">
-              Used to attach the result to your Performance Review record.
+              Використовується, щоб приєднати результат до вашого запису Performance Review.
             </span>
             {touched && !emailValid ? (
-              <span className="field__error">Please enter a valid email address.</span>
+              <span className="field__error">Будь ласка, введіть коректну адресу пошти.</span>
             ) : null}
           </div>
 
@@ -163,7 +167,8 @@ export function StartScreen({
               style={{ marginTop: '4px' }}
             />
             <span className="small">
-              I have read the integrity rules and understand that leaving this page ends my attempt.
+              Я прочитав правила чесного проходження і розумію, що вихід із цієї сторінки завершує
+              мою спробу.
             </span>
           </label>
 
@@ -171,7 +176,7 @@ export function StartScreen({
 
           <div>
             <button className="btn btn--primary" type="submit" disabled={!canStart}>
-              {busy ? 'Starting...' : 'Start the test'}
+              {busy ? 'Запускаємо...' : 'Почати тест'}
             </button>
           </div>
         </form>

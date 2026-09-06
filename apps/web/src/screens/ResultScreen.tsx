@@ -32,24 +32,24 @@ export function ResultScreen({
       <Card hero>
         <div className="result-hero">
           <div className={`level-badge level-badge--${tier}`}>
-            <span className="level-badge__caption">Estimated level</span>
+            <span className="level-badge__caption">Орієнтовний рівень</span>
             <span className="level-badge__value">{label}</span>
           </div>
           <div style={{ flex: 1, minWidth: '260px' }}>
             <h1>
-              {breakdown.correct} of {breakdown.total} correct
+              Правильних відповідей: {breakdown.correct} з {breakdown.total}
             </h1>
             <p className="muted" style={{ marginTop: 'var(--sp-3)' }}>
               {breakdown.rationale}
             </p>
             {breakdown.nextLevelGap ? (
-              <Banner tone="info" title="Next rung">
+              <Banner tone="info" title="Наступний щабель">
                 {breakdown.nextLevelGap}
               </Banner>
             ) : (
               <Banner tone="info">
-                You met the top rung of the ladder on this test. The Performance Review also expects
-                ISTQB Advanced Level certification at Senior.
+                У цьому тесті ви дісталися верхнього щабля. Performance Review для рівня Senior також
+                очікує сертифікацію ISTQB Advanced Level.
               </Banner>
             )}
           </div>
@@ -57,18 +57,18 @@ export function ResultScreen({
       </Card>
 
       {result.status === 'expired' ? (
-        <Banner tone="warning" title="Time ran out">
-          The attempt was scored on the answers saved before the deadline. Unanswered questions count
-          as incorrect.
+        <Banner tone="warning" title="Час вичерпано">
+          Спробу оцінено за відповідями, збереженими до завершення часу. Питання без відповіді
+          зараховані як неправильні.
         </Banner>
       ) : null}
 
       <Card>
-        <h2 className="card__title">Score by tier</h2>
+        <h2 className="card__title">Результат за рівнями</h2>
         <p className="muted small">
-          The ladder is decided by these four numbers, using the thresholds from the Performance
-          Review sheet. A tier is only useful if the tiers below it are solid, which is why a strong
-          Senior score cannot compensate for a weak Junior one.
+          Щабель визначається саме цими чотирма числами за порогами з таблиці Performance Review.
+          Рівень має вагу лише тоді, коли рівні під ним міцні - тому сильний результат за Senior не
+          компенсує слабкий за Junior.
         </p>
         <div className="tier-bars" style={{ marginTop: 'var(--sp-5)' }}>
           {TIERS.map((t) => {
@@ -84,7 +84,7 @@ export function ResultScreen({
                 <div
                   className="tier-bar__track"
                   role="img"
-                  aria-label={`${TIER_LABELS[t]} tier: ${score.percent} percent`}
+                  aria-label={`Рівень ${TIER_LABELS[t]}: ${score.percent} відсотків`}
                 >
                   <div className={`tier-bar__fill tier-bar__fill--${t}`} style={{ width: `${score.percent}%` }} />
                 </div>
@@ -96,14 +96,14 @@ export function ResultScreen({
 
       {meta ? (
         <Card>
-          <h2 className="card__title">Where this level sits</h2>
+          <h2 className="card__title">Де розташований цей рівень</h2>
           <div className="table__scroll">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Level</th>
-                  <th>Requires</th>
-                  <th>You</th>
+                  <th>Рівень</th>
+                  <th>Вимоги</th>
+                  <th>Ви</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,8 +118,8 @@ export function ResultScreen({
                       style={isYou ? { background: 'var(--brand-primary-tint)', fontWeight: 600 } : undefined}
                     >
                       <td>{rule.label}</td>
-                      <td className="muted">{requires || 'Below the Trainee threshold'}</td>
-                      <td>{isYou ? 'Your result' : ''}</td>
+                      <td className="muted">{requires || 'Нижче порога Trainee'}</td>
+                      <td>{isYou ? 'Ваш результат' : ''}</td>
                     </tr>
                   );
                 })}
@@ -131,19 +131,19 @@ export function ResultScreen({
 
       {weakest.length > 0 ? (
         <Card>
-          <h2 className="card__title">Competencies to look at first</h2>
+          <h2 className="card__title">Компетенції, на які варто глянути першими</h2>
           <p className="muted small">
-            Taken from the rows of the Performance Review sheet that this paper touched. Twenty
-            questions cannot cover every row, so treat this as a prompt for the review conversation
-            rather than a verdict.
+            Взято з тих рядків таблиці Performance Review, яких торкнувся ваш варіант. Двадцять
+            питань не можуть покрити кожен рядок, тож сприймайте це як тему для розмови на review, а
+            не як вирок.
           </p>
           <div className="table__scroll" style={{ marginTop: 'var(--sp-4)' }}>
             <table className="table">
               <thead>
                 <tr>
-                  <th>Competency</th>
-                  <th>Tier</th>
-                  <th>Result</th>
+                  <th>Компетенція</th>
+                  <th>Рівень</th>
+                  <th>Результат</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,9 +166,9 @@ export function ResultScreen({
 
       <Card>
         <div className="row row--between">
-          <h2 style={{ fontSize: 'var(--fs-h3)' }}>Answer review</h2>
+          <h2 style={{ fontSize: 'var(--fs-h3)' }}>Розбір відповідей</h2>
           <button className="btn btn--secondary" type="button" onClick={() => setShowReview((v) => !v)}>
-            {showReview ? 'Hide answers' : 'Show all 20 answers'}
+            {showReview ? 'Сховати відповіді' : `Показати всі ${result.questions.length} відповідей`}
           </button>
         </div>
         {showReview ? (
@@ -180,18 +180,22 @@ export function ResultScreen({
                   <span className={`badge badge--${q.tier}`}>{TIER_LABELS[q.tier]}</span>
                   <span className="badge badge--neutral">{SOURCE_LABELS[q.source] ?? q.source}</span>
                   <span className={`option__mark option__mark--${q.correct ? 'correct' : 'incorrect'}`}>
-                    {q.correct ? 'Correct' : 'Incorrect'}
+                    {q.correct ? 'Правильно' : 'Неправильно'}
                   </span>
                 </div>
                 <div style={{ fontWeight: 500, color: 'var(--ink-strong)' }}>{q.text}</div>
                 <div className="small" style={{ marginTop: 'var(--sp-3)' }}>
                   <div>
-                    <span className="muted">Your answer: </span>
-                    {q.yourAnswer.length > 0 ? q.yourAnswer.join('; ') : <em className="muted">not answered</em>}
+                    <span className="muted">Ваша відповідь: </span>
+                    {q.yourAnswer.length > 0 ? (
+                      q.yourAnswer.join('; ')
+                    ) : (
+                      <em className="muted">без відповіді</em>
+                    )}
                   </div>
                   {!q.correct ? (
                     <div style={{ marginTop: 'var(--sp-1)' }}>
-                      <span className="muted">Correct answer: </span>
+                      <span className="muted">Правильна відповідь: </span>
                       {q.correctAnswer.join('; ')}
                     </div>
                   ) : null}
@@ -205,11 +209,11 @@ export function ResultScreen({
 
       <div className="row">
         <button className="btn btn--ghost" type="button" onClick={onRestart}>
-          Start a new attempt
+          Почати нову спробу
         </button>
         <span className="small muted">
-          A new attempt draws a different variant. Share this result with your manager when you plan
-          the Performance Review.
+          Нова спроба видає інший варіант. Поділіться цим результатом з керівником, коли
+          плануватимете Performance Review.
         </span>
       </div>
     </div>

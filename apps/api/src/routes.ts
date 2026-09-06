@@ -94,7 +94,7 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
       return reply.code(400).send({ error: 'invalid_request', issues: error.issues });
     }
     app.log.error(error);
-    return reply.code(500).send({ error: 'internal_error', message: 'Unexpected server error' });
+    return reply.code(500).send({ error: 'internal_error', message: 'Непередбачена помилка сервера.' });
   });
 
   // --- metadata ------------------------------------------------------------
@@ -220,7 +220,7 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
     if (attempt.status === 'terminated') {
       throw new AttemptError(
         409,
-        attempt.termination_reason ?? 'This attempt was ended by the exam integrity rules.',
+        attempt.termination_reason ?? 'Цю спробу завершено за правилами чесності проходження тесту.',
         'attempt_terminated',
       );
     }

@@ -97,9 +97,9 @@ export function getAttempt(db: Db, id: string): AttemptRow | undefined {
  */
 export function authorizeAttempt(db: Db, id: string, token: string | undefined): AttemptRow {
   const attempt = getAttempt(db, id);
-  if (!attempt) throw new AttemptError(404, 'Attempt not found', 'attempt_not_found');
+  if (!attempt) throw new AttemptError(404, 'Спробу не знайдено.', 'attempt_not_found');
   if (!token || hashToken(token) !== attempt.token_hash) {
-    throw new AttemptError(401, 'Invalid attempt token', 'invalid_token');
+    throw new AttemptError(401, 'Недійсний токен спроби.', 'invalid_token');
   }
   return expireIfDue(db, attempt);
 }
@@ -117,9 +117,9 @@ export function expireIfDue(db: Db, attempt: AttemptRow): AttemptRow {
 export function requireLive(attempt: AttemptRow): void {
   if (attempt.status === 'in_progress') return;
   const messages: Record<Exclude<AttemptStatus, 'in_progress'>, string> = {
-    submitted: 'This attempt has already been submitted.',
-    expired: 'The time limit for this attempt has passed.',
-    terminated: 'This attempt was ended by the exam integrity rules.',
+    submitted: 'Цю спробу вже завершено і здано.',
+    expired: 'Час на цю спробу вичерпано.',
+    terminated: 'Цю спробу завершено за правилами чесності проходження тесту.',
   };
   throw new AttemptError(409, messages[attempt.status], `attempt_${attempt.status}`);
 }
@@ -138,7 +138,7 @@ export function saveAnswer(
 ): { savedOptionCount: number } {
   const question = variantQuestions(attempt.variant_number).find((q) => q.id === questionId);
   if (!question) {
-    throw new AttemptError(400, 'Question is not part of this attempt', 'unknown_question');
+    throw new AttemptError(400, 'Це питання не входить до цієї спроби.', 'unknown_question');
   }
 
   const real = resolveOptionIds(attempt.id, question, opaqueOptionIds);
@@ -285,7 +285,7 @@ export interface AttemptResult {
  */
 export function submitAttempt(db: Db, attempt: AttemptRow): AttemptResult {
   if (attempt.status === 'terminated') {
-    throw new AttemptError(409, 'A terminated attempt cannot be scored.', 'attempt_terminated');
+    throw new AttemptError(409, 'Завершену за порушення спробу не оцінюють.', 'attempt_terminated');
   }
 
   const questions = variantQuestions(attempt.variant_number);
@@ -323,7 +323,7 @@ export function buildResult(db: Db, attempt: AttemptRow): AttemptResult {
   const stored = db
     .prepare('SELECT breakdown FROM attempt_results WHERE attempt_id = ?')
     .get(attempt.id) as { breakdown: string } | undefined;
-  if (!stored) throw new AttemptError(404, 'This attempt has no result yet.', 'no_result');
+  if (!stored) throw new AttemptError(404, 'Для цієї спроби ще немає результату.', 'no_result');
 
   const breakdown = JSON.parse(stored.breakdown) as ScoreBreakdown;
   const answers = loadAnswers(db, attempt.id);

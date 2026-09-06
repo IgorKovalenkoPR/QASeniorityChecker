@@ -8,13 +8,18 @@ export const TIER_LABELS: Record<Tier, string> = {
   senior: 'Senior',
 };
 
+/**
+ * Рівні лишаються англійськими: це власні назви щаблів компанії з таблиці
+ * Performance Review, і саме так їх називають на самому review.
+ */
+
 export const SOURCE_LABELS: Record<string, string> = {
   'pr-matrix': 'Performance Review',
   'istqb-ctfl': 'ISTQB Foundation',
   'istqb-ctal-ta': 'ISTQB Test Analyst',
   'istqb-ctal-tm': 'ISTQB Test Manager',
-  'istqb-glossary': 'ISTQB Glossary',
-  'practice-dump': 'Practice',
+  'istqb-glossary': 'Глосарій ISTQB',
+  'practice-dump': 'Практика',
 };
 
 export function Card({
@@ -47,12 +52,12 @@ export function Progress({ answered, total }: { answered: number; total: number 
         aria-valuemin={0}
         aria-valuemax={total}
         aria-valuenow={answered}
-        aria-label="Questions answered"
+        aria-label="Відповіді надано"
       >
         <div className="progress__fill" style={{ width: `${percent}%` }} />
       </div>
       <span className="progress__label">
-        {answered} of {total} answered
+        Відповіді: {answered} з {total}
       </span>
     </div>
   );
