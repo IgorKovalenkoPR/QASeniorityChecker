@@ -10,6 +10,7 @@ import {
 import { config } from './config.js';
 import type { Db } from './db.js';
 import { opaqueOptionId, resolveOptionIds, variantQuestions } from './paper.js';
+import { enqueueAttemptExport } from './sheetOutbox.js';
 
 export type AttemptStatus = 'in_progress' | 'submitted' | 'expired' | 'terminated';
 
@@ -336,9 +337,14 @@ export function submitAttempt(db: Db, attempt: AttemptRow): AttemptResult {
   tx();
 
   const finalStatus: AttemptStatus = attempt.status === 'in_progress' ? 'submitted' : attempt.status;
-  return buildResult(db, { ...attempt, status: finalStatus }, {
-    revealAnswers: config.revealAnswersToCandidate,
-  });
+  const scored = { ...attempt, status: finalStatus };
+
+  // Queue the spreadsheet row. Deliberately after the result is persisted and
+  // deliberately not awaited on anything external: the candidate's submission
+  // must not be able to fail because Google was slow.
+  queueExport(db, scored, breakdown);
+
+  return buildResult(db, scored, { revealAnswers: config.revealAnswersToCandidate });
 }
 
 /**
@@ -352,6 +358,32 @@ export function submitAttempt(db: Db, attempt: AttemptRow): AttemptResult {
  * breakdown does not already say - unlike the answer text and the explanation,
  * which are the expensive, reusable part of the bank.
  */
+/**
+ * Hand a scored attempt to the spreadsheet outbox.
+ *
+ * Reads the reinstatement flag so the sheet can show that a result came from an
+ * overturned termination rather than a clean run - a distinction the roster
+ * makes and the sheet must not lose.
+ */
+function queueExport(db: Db, attempt: AttemptRow, breakdown: ScoreBreakdown): void {
+  const reinstated =
+    db.prepare('SELECT 1 FROM attempt_reinstatements WHERE attempt_id = ?').get(attempt.id) !==
+    undefined;
+  enqueueAttemptExport(db, {
+    attemptId: attempt.id,
+    candidateName: attempt.candidate_name,
+    candidateEmail: attempt.candidate_email,
+    variantNumber: attempt.variant_number,
+    status: attempt.status,
+    startedAt: attempt.started_at,
+    finishedAt: attempt.finished_at,
+    strikes: attempt.strikes,
+    terminationReason: attempt.termination_reason,
+    reinstated,
+    breakdown,
+  });
+}
+
 export function buildResult(
   db: Db,
   attempt: AttemptRow,

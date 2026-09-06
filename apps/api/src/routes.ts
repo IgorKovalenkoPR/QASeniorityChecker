@@ -26,6 +26,7 @@ import {
 } from './attempts.js';
 import type { AttemptRow } from './attempts.js';
 import { buildPaper } from './paper.js';
+import { exportStats, flushExports, pendingExports } from './sheetOutbox.js';
 
 const reinstateBody = z.object({
   /**
@@ -389,6 +390,26 @@ export function registerAdminRoutes(app: FastifyInstance, db: Db): void {
     }
     return reply.send(buildResult(db, attempt, { revealAnswers: true }));
   });
+
+  /**
+   * Whether results are reaching the spreadsheet.
+   *
+   * Worth having as an endpoint rather than a log line: the export is the only
+   * part of the system whose failure is invisible from the outside - every
+   * attempt looks fine, and the sheet just quietly stops growing.
+   */
+  app.get('/api/admin/sheet-exports', { preHandler: guard }, async () => ({
+    configured: config.sheetExportConfigured,
+    sheetId: config.sheetId,
+    tab: config.sheetTab,
+    stats: exportStats(db),
+    pending: pendingExports(db, 50),
+  }));
+
+  /** Drain the queue now, instead of waiting for the next tick. */
+  app.post('/api/admin/sheet-exports/flush', { preHandler: guard }, async () =>
+    flushExports(db),
+  );
 
   app.get('/api/admin/bank', { preHandler: guard }, async () => ({
     stats: bankStats(),

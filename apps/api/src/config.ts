@@ -149,4 +149,23 @@ export const config = {
    * needed when that is not true.
    */
   publicUrl: process.env.QASC_PUBLIC_URL ?? null,
+
+  /** --- Google Spreadsheet export --- */
+  /** The spreadsheet's id, the long string in its URL. */
+  sheetId: process.env.QASC_SHEET_ID ?? null,
+  /** Tab name. Must exist in the spreadsheet; the export does not create it. */
+  sheetTab: process.env.QASC_SHEET_TAB ?? 'Attempts',
+  /**
+   * The service account key, as the whole JSON blob. A dashboard env var is the
+   * only place it can live on a platform with no filesystem to put a file on.
+   */
+  sheetServiceAccountJson: process.env.QASC_GOOGLE_SERVICE_ACCOUNT_JSON ?? null,
+  /**
+   * Whether rows can actually be sent. Rows are queued regardless - this only
+   * gates the flusher, so credentials arriving later drain the backlog.
+   */
+  sheetExportConfigured:
+    Boolean(process.env.QASC_SHEET_ID) &&
+    Boolean(process.env.QASC_GOOGLE_SERVICE_ACCOUNT_JSON),
+  sheetFlushIntervalSec: int('QASC_SHEET_FLUSH_SECONDS', 30),
 } as const;
