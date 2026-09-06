@@ -34,6 +34,75 @@ function optionSecret(): string {
   return generated;
 }
 
+function list(name: string): string[] {
+  const raw = process.env[name];
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((v) => v.trim().toLowerCase())
+    .filter((v) => v.length > 0);
+}
+
+/**
+ * How candidates identify themselves.
+ *
+ *   google - Google sign-in, restricted to QASC_ALLOWED_EMAIL_DOMAINS.
+ *   open   - the candidate types a name and an email that nobody verifies.
+ *
+ * 'open' is the historical behaviour and is fine for a link handed to a few
+ * people you trust. It is refused in production: a public URL with an
+ * unverified name field files results under whatever anyone types, and hands
+ * the 504-question bank to anyone who finds the link.
+ */
+function authMode(): 'google' | 'open' {
+  const raw = (process.env.QASC_AUTH_MODE ?? '').trim().toLowerCase();
+  const mode = raw === '' ? (process.env.NODE_ENV === 'production' ? 'google' : 'open') : raw;
+  if (mode !== 'google' && mode !== 'open') {
+    throw new Error('QASC_AUTH_MODE must be "google" or "open"');
+  }
+  if (mode === 'open' && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'QASC_AUTH_MODE=open is refused in production: it would let anyone start an attempt ' +
+        'under any email. Configure Google sign-in instead.',
+    );
+  }
+  return mode;
+}
+
+/**
+ * The secret that signs the session cookie. Same reasoning as the option
+ * secret: rotating it logs everyone out, and a silent random one in production
+ * would do that on every deploy.
+ */
+function sessionSecret(mode: 'google' | 'open'): string {
+  const fromEnv = process.env.QASC_SESSION_SECRET;
+  if (fromEnv && fromEnv.length >= 32) return fromEnv;
+  if (mode === 'google' && process.env.NODE_ENV === 'production') {
+    throw new Error('QASC_SESSION_SECRET must be set to at least 32 characters in production');
+  }
+  return randomBytes(32).toString('hex');
+}
+
+const resolvedAuthMode = authMode();
+const resolvedDomains = list('QASC_ALLOWED_EMAIL_DOMAINS');
+
+// The domain allow-list is the whole point of the sign-in: without it, Google
+// sign-in still admits every Gmail account on earth.
+if (resolvedAuthMode === 'google' && resolvedDomains.length === 0) {
+  throw new Error(
+    'QASC_ALLOWED_EMAIL_DOMAINS must list at least one domain when QASC_AUTH_MODE=google ' +
+      '(e.g. "qarea.com,testfort.com"). Without it any Google account would be admitted.',
+  );
+}
+if (
+  resolvedAuthMode === 'google' &&
+  (!process.env.QASC_GOOGLE_CLIENT_ID || !process.env.QASC_GOOGLE_CLIENT_SECRET)
+) {
+  throw new Error(
+    'QASC_GOOGLE_CLIENT_ID and QASC_GOOGLE_CLIENT_SECRET are required when QASC_AUTH_MODE=google',
+  );
+}
+
 export const config = {
   port: int('PORT', 3000),
   host: process.env.HOST ?? '0.0.0.0',
@@ -63,4 +132,21 @@ export const config = {
    * reviewer still sees everything through the admin result endpoint.
    */
   revealAnswersToCandidate: bool('QASC_REVEAL_ANSWERS_TO_CANDIDATE', false),
+
+  /** --- identity --- */
+  authMode: resolvedAuthMode,
+  /** Lower-cased, e.g. ['qarea.com']. Empty only when authMode is 'open'. */
+  allowedEmailDomains: resolvedDomains,
+  googleClientId: process.env.QASC_GOOGLE_CLIENT_ID ?? null,
+  googleClientSecret: process.env.QASC_GOOGLE_CLIENT_SECRET ?? null,
+  sessionSecret: sessionSecret(resolvedAuthMode),
+  /** 12 hours: long enough to finish a test and come back, short enough to expire. */
+  sessionTtlSec: int('QASC_SESSION_TTL_SECONDS', 12 * 60 * 60),
+  /**
+   * The externally reachable origin, used to build the OAuth redirect URI -
+   * which must match the one registered in the Google Cloud console exactly.
+   * Behind Render's proxy the request's own host is right, so this is only
+   * needed when that is not true.
+   */
+  publicUrl: process.env.QASC_PUBLIC_URL ?? null,
 } as const;

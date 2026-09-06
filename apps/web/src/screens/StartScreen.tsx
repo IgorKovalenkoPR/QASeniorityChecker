@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import type { MetaResponse } from '../lib/api.js';
+import type { Identity, MetaResponse } from '../lib/api.js';
 import { Banner, Card } from '../components/ui.js';
 
 /**
@@ -14,12 +14,14 @@ import { Banner, Card } from '../components/ui.js';
  */
 export function StartScreen({
   meta,
+  identity,
   onStart,
   busy,
   error,
 }: {
   meta: MetaResponse | null;
-  onStart: (input: { candidateName: string; candidateEmail: string }) => void;
+  identity: Identity | null;
+  onStart: (input: { candidateName?: string; candidateEmail?: string }) => void;
   busy: boolean;
   error: string | null;
 }) {
@@ -28,15 +30,20 @@ export function StartScreen({
   const [accepted, setAccepted] = useState(false);
   const [touched, setTouched] = useState(false);
 
+  // When Google owns the identity there is nothing to type and nothing to
+  // validate: the server takes the name and the address from the verified
+  // session and ignores anything sent in the body.
+  const identityFromGoogle = identity !== null;
   const nameValid = name.trim().length >= 2;
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const canStart = nameValid && emailValid && accepted && !busy;
+  const canStart = (identityFromGoogle || (nameValid && emailValid)) && accepted && !busy;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setTouched(true);
     if (!canStart) return;
-    onStart({ candidateName: name.trim(), candidateEmail: email.trim() });
+    if (identityFromGoogle) onStart({});
+    else onStart({ candidateName: name.trim(), candidateEmail: email.trim() });
   };
 
   const minutes = meta ? Math.round(meta.durationSeconds / 60) : 30;
@@ -135,41 +142,54 @@ export function StartScreen({
       <Card>
         <h2 className="card__title">Почати тест</h2>
         <form className="stack" onSubmit={submit} noValidate>
-          <div className="field">
-            <label className="field__label" htmlFor="candidate-name">
-              Повне імʼя
-            </label>
-            <input
-              id="candidate-name"
-              className="field__input"
-              value={name}
-              autoComplete="name"
-              onChange={(event) => setName(event.target.value)}
-            />
-            {touched && !nameValid ? (
-              <span className="field__error">Будь ласка, введіть своє імʼя.</span>
-            ) : null}
-          </div>
+          {identityFromGoogle ? (
+            <div className="field">
+              <span className="field__label">Ви входите як</span>
+              <div style={{ fontWeight: 500, color: 'var(--ink-strong)' }}>{identity.name}</div>
+              <span className="field__hint">
+                {identity.email} - результат приєднається до цієї адреси. Змінити її тут не можна:
+                вона підтверджена входом через Google.
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="field">
+                <label className="field__label" htmlFor="candidate-name">
+                  Повне імʼя
+                </label>
+                <input
+                  id="candidate-name"
+                  className="field__input"
+                  value={name}
+                  autoComplete="name"
+                  onChange={(event) => setName(event.target.value)}
+                />
+                {touched && !nameValid ? (
+                  <span className="field__error">Будь ласка, введіть своє імʼя.</span>
+                ) : null}
+              </div>
 
-          <div className="field">
-            <label className="field__label" htmlFor="candidate-email">
-              Робоча пошта
-            </label>
-            <input
-              id="candidate-email"
-              className="field__input"
-              type="email"
-              value={email}
-              autoComplete="email"
-              onChange={(event) => setEmail(event.target.value)}
-            />
-            <span className="field__hint">
-              Використовується, щоб приєднати результат до вашого запису Performance Review.
-            </span>
-            {touched && !emailValid ? (
-              <span className="field__error">Будь ласка, введіть коректну адресу пошти.</span>
-            ) : null}
-          </div>
+              <div className="field">
+                <label className="field__label" htmlFor="candidate-email">
+                  Робоча пошта
+                </label>
+                <input
+                  id="candidate-email"
+                  className="field__input"
+                  type="email"
+                  value={email}
+                  autoComplete="email"
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+                <span className="field__hint">
+                  Використовується, щоб приєднати результат до вашого запису Performance Review.
+                </span>
+                {touched && !emailValid ? (
+                  <span className="field__error">Будь ласка, введіть коректну адресу пошти.</span>
+                ) : null}
+              </div>
+            </>
+          )}
 
           <label className="row" style={{ alignItems: 'flex-start', gap: 'var(--sp-3)' }}>
             <input

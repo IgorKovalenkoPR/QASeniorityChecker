@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { INTEGRITY_EVENT_TYPES, LEVEL_LABELS, LEVEL_RULES } from '@qasc/core';
 import { QUESTION_BANK, VARIANTS, bankStats } from '@qasc/content';
+import { AuthError } from './auth.js';
+import { currentSession, requireCandidate } from './authRoutes.js';
 import { config } from './config.js';
 import type { Db } from './db.js';
 import {
@@ -34,12 +36,20 @@ const reinstateBody = z.object({
   note: z.string().trim().min(3).max(500),
 });
 
-const startBody = z.object({
-  candidateName: z.string().trim().min(2).max(120),
-  candidateEmail: z.string().trim().email().max(200),
-  /** The candidate must acknowledge the integrity rules before the timer starts. */
-  acceptedRules: z.literal(true),
-});
+/**
+ * In 'google' mode the identity is never taken from the body - it comes from
+ * the verified session, so the only thing the caller still supplies is the
+ * acknowledgement. In 'open' mode the old unverified fields are required.
+ */
+const startBody =
+  config.authMode === 'google'
+    ? z.object({ acceptedRules: z.literal(true) })
+    : z.object({
+        candidateName: z.string().trim().min(2).max(120),
+        candidateEmail: z.string().trim().email().max(200),
+        /** The candidate must acknowledge the integrity rules before the timer starts. */
+        acceptedRules: z.literal(true),
+      });
 
 const answerBody = z.object({
   questionId: z.string().min(1).max(64),
@@ -128,7 +138,7 @@ function asClientError(error: unknown): ClientError | null {
 
 export function registerRoutes(app: FastifyInstance, db: Db): void {
   app.setErrorHandler((error, request, reply) => {
-    if (error instanceof AttemptError) {
+    if (error instanceof AttemptError || error instanceof AuthError) {
       return reply.code(error.statusCode).send({ error: error.code, message: error.message });
     }
     if (error instanceof z.ZodError) {
@@ -160,6 +170,11 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
     durationSeconds: config.attemptDurationSec,
     heartbeatSeconds: config.heartbeatIntervalSec,
     bank: bankStats(),
+    auth: {
+      mode: config.authMode,
+      /** Present so the sign-in screen can name the domains it will accept. */
+      allowedEmailDomains: config.allowedEmailDomains,
+    },
     integrity: {
       strikesAllowed: attemptMeta.policy.terminateAtStrikes,
       graceMs: attemptMeta.policy.graceMs,
@@ -177,10 +192,17 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
   // --- attempt lifecycle ---------------------------------------------------
 
   app.post('/api/attempts', async (request, reply) => {
-    const body = startBody.parse(request.body);
+    const body = startBody.parse(request.body) as {
+      candidateName?: string;
+      candidateEmail?: string;
+    };
+    const identity =
+      config.authMode === 'google'
+        ? requireCandidate(request)
+        : { name: body.candidateName as string, email: body.candidateEmail as string };
     const { attempt, token } = startAttempt(db, {
-      candidateName: body.candidateName,
-      candidateEmail: body.candidateEmail,
+      candidateName: identity.name,
+      candidateEmail: identity.email,
     });
     return reply.code(201).send({
       token,
