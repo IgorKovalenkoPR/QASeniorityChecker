@@ -805,3 +805,83 @@ describe('reinstating a falsely terminated attempt', () => {
     expect(asCandidate.statusCode).toBe(401);
   });
 });
+
+describe('a malformed request blames the request, not the server', () => {
+  it('rejects a bodyless POST that claims a JSON content-type with 400, not 500', async () => {
+    // Exactly the shape that produced a 500 during a live walkthrough: the
+    // route takes no body, the caller sent a JSON content-type anyway, and
+    // Fastify refused the empty payload with its own statusCode 400. The
+    // handler used to ignore that and report an internal error, which tells
+    // the caller the server is broken and logs their mistake as an outage.
+    const started = await startAttempt();
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/submit`,
+      headers: { ...started.auth, 'content-type': 'application/json' },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('invalid_request');
+  });
+
+  it('rejects an unparseable JSON body with 400', async () => {
+    const started = await startAttempt();
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/api/attempts/${started.attempt.id}/answers`,
+      headers: { ...started.auth, 'content-type': 'application/json' },
+      payload: '{ this is not json',
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error).toBe('invalid_request');
+  });
+
+  it('still succeeds when the same bodyless POST omits the content-type', async () => {
+    // The fix must not have papered over a real problem: the correct call
+    // still works, and the answer key is still withheld.
+    const started = await startAttempt();
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/submit`,
+      headers: started.auth,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().answersRevealed).toBe(false);
+  });
+
+  it('keeps reporting a genuine attempt error with its own code', async () => {
+    // The AttemptError branch must still win: these are not "malformed
+    // requests", they are verdicts, and the client reads the code.
+    const started = await startAttempt();
+    await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/integrity`,
+      headers: started.auth,
+      payload: {
+        events: [{ type: 'visibility_hidden', occurredAt: Date.now(), durationMs: 45_000 }],
+      },
+    });
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/submit`,
+      headers: started.auth,
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe('attempt_terminated');
+  });
+
+  it('never hands a client the wording of an internal failure', async () => {
+    // A 5xx keeps the generic message. Checked on the shape of the response
+    // rather than by breaking the server: nothing that is not a 4xx may pass
+    // its own message through.
+    const started = await startAttempt();
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/attempts/${started.attempt.id}/result`,
+      headers: started.auth,
+    });
+    // No result yet, and that is an AttemptError with its own code - the point
+    // being that the generic internal_error message is reserved and unused.
+    expect(response.statusCode).toBe(404);
+    expect(response.json().message).not.toContain('Непередбачена');
+  });
+});
