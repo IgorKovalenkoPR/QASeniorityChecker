@@ -22,7 +22,8 @@ import { randomBytes } from 'node:crypto';
  * Fastify read the X-Forwarded-* headers it sets.
  */
 function origin(request: FastifyRequest): string {
-  if (config.publicUrl) return config.publicUrl.replace(/\/+$/, '');
+  // Already validated and normalised to a bare origin by config.
+  if (config.publicUrl) return config.publicUrl;
   // request.host, not request.hostname: in Fastify 5 hostname drops the port,
   // which silently produced a redirect_uri Google would reject for anything
   // not served on the default port - and Google matches it byte for byte
