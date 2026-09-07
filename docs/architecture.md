@@ -711,6 +711,14 @@ Beyond the suite, three checks run separately and belong in CI:
 `npm run typecheck`, `npm run check:bundle` (needs a build first) and
 `npm run export:variants` with a diff.
 
+One CI-specific trap, since it has already cost a red build: **the runner is on a
+much newer Node than the development machine** (24 against 20.4 at the time of
+writing), and the globals differ. `navigator` does not exist at all on Node 20
+and is a getter-only accessor on Node 24, so a test that assigns to it passes
+locally and throws in CI — modules are strict mode, where writing to an accessor
+without a setter is an error rather than a silent no-op. Anything that stands a
+global in for a browser object has to use `Object.defineProperty`.
+
 What is **not** covered automatically: anything requiring a real browser, a real
 Google account, or a real Docker daemon. Those were exercised by hand — the
 sign-in redirect, the language switch mid-test, the container build — and the

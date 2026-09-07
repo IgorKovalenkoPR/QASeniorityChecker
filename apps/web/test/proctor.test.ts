@@ -108,21 +108,46 @@ beforeEach(async () => {
     clearInterval: (id: number) => globalThis.clearInterval(id),
   });
   g.BroadcastChannel = FakeChannel;
-  g.navigator = {
-    sendBeacon: () => {
-      beacons += 1;
-      return true;
-    },
+
+  // `navigator` cannot be assigned. Node 20 has no such global at all, and
+  // Node 24 - which CI runs - exposes it as a getter-only accessor, so a plain
+  // assignment throws there and passes here. defineProperty works on both, and
+  // the fallback extends the real object in case a future Node makes the global
+  // non-configurable as well. The proctor only ever looks for `sendBeacon`.
+  const sendBeacon = () => {
+    beacons += 1;
+    return true;
   };
-  g.Blob = class {
-    constructor(readonly parts: unknown[]) {}
-  };
+  try {
+    Object.defineProperty(globalThis, 'navigator', {
+      value: { sendBeacon },
+      configurable: true,
+      writable: true,
+    });
+  } catch {
+    Object.defineProperty(globalThis.navigator, 'sendBeacon', {
+      value: sendBeacon,
+      configurable: true,
+    });
+  }
+
+  if (typeof globalThis.Blob === 'undefined') {
+    g.Blob = class {
+      constructor(readonly parts: unknown[]) {}
+    };
+  }
 
   ({ Proctor } = await import('../src/lib/proctor.js'));
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  // Vitest isolates files, but leaving a fake `document` on the global is the
+  // kind of thing that makes an unrelated suite fail in a way nobody can trace.
+  const g = globalThis as unknown as Record<string, unknown>;
+  delete g.document;
+  delete g.window;
+  delete g.BroadcastChannel;
 });
 
 function build() {
