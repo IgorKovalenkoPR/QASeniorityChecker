@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AttemptView, PaperQuestion } from '../lib/api.js';
-import { Banner, Card, Progress, SOURCE_LABELS, TierBadge, Timer } from '../components/ui.js';
+import { Banner, Card, Progress, TierBadge, Timer } from '../components/ui.js';
+import { sourceLabel, useI18n } from '../lib/i18n.js';
 
 export interface TestScreenProps {
   attempt: AttemptView;
@@ -27,6 +28,7 @@ export function TestScreen({
   onSubmit,
   submitting,
 }: TestScreenProps) {
+  const { t, text } = useI18n();
   const [index, setIndex] = useState(0);
   const [confirming, setConfirming] = useState(false);
 
@@ -66,17 +68,17 @@ export function TestScreen({
         <div className="row row--between">
           <div className="row">
             <strong>
-              Питання {index + 1} / {questions.length}
+              {t('test.progress', { i: index + 1, n: questions.length })}
             </strong>
-            <span className="badge badge--neutral">Варіант {attempt.variantNumber}</span>
+            <span className="badge badge--neutral">{t('app.variant', { n: attempt.variantNumber })}</span>
           </div>
           <div className="row">
             {saveStatus.pending > 0 && !saveStatus.retrying ? (
-              <span className="small muted">Зберігаємо...</span>
+              <span className="small muted">{t('test.saving')}</span>
             ) : null}
             {saveStatus.retrying ? (
               <span className="small" style={{ color: 'var(--warning-ink)', fontWeight: 500 }}>
-                Не збережено - повторюємо
+                {t('test.unsaved')}
               </span>
             ) : null}
             <Timer seconds={secondsRemaining} />
@@ -88,20 +90,18 @@ export function TestScreen({
       </Card>
 
       {saveStatus.retrying ? (
-        <Banner tone="warning" title="Звʼязок із сервером нестабільний.">
-          Останні відповіді ще не збереглися, і ми повторюємо спроби надіслати їх. Спробу це не
-          завершує, а таймер іде на сервері. Не закривайте сторінку - щойно звʼязок відновиться,
-          відповіді дійдуть самі.
+        <Banner tone="warning" title={t('test.retryTitle')}>
+          {t('test.retryBody')}
         </Banner>
       ) : null}
 
       {warning ? (
-        <Banner tone="warning" title="Попередження про порушення">
+        <Banner tone="warning" title={t('test.warnTitle')}>
           {warning}
           {strikesRemaining > 0 ? (
             <>
               {' '}
-              Залишилося попереджень до завершення спроби: {strikesRemaining}.
+              {t('test.warnRemaining', { n: strikesRemaining })}
             </>
           ) : null}
         </Banner>
@@ -110,13 +110,13 @@ export function TestScreen({
       <Card>
         <div className="question__meta">
           <TierBadge tier={question.tier} />
-          <span className="badge badge--neutral">{SOURCE_LABELS[question.source] ?? question.source}</span>
+          <span className="badge badge--neutral">{sourceLabel(t, question.source)}</span>
           {question.multiSelect ? (
-            <span className="badge badge--neutral">Оберіть усі правильні варіанти</span>
+            <span className="badge badge--neutral">{t('test.multi')}</span>
           ) : null}
         </div>
 
-        <h2 className="question__text">{question.text}</h2>
+        <h2 className="question__text">{text(question.text)}</h2>
 
         <ul className="options">
           {question.options.map((option) => {
@@ -130,7 +130,7 @@ export function TestScreen({
                     checked={isSelected}
                     onChange={() => toggle(option.id)}
                   />
-                  <span className="option__text">{option.text}</span>
+                  <span className="option__text">{text(option.text)}</span>
                 </label>
               </li>
             );
@@ -144,7 +144,7 @@ export function TestScreen({
             onClick={() => setIndex((i) => Math.max(0, i - 1))}
             disabled={index === 0}
           >
-            Назад
+            {t('test.back')}
           </button>
           {index < questions.length - 1 ? (
             <button
@@ -152,11 +152,11 @@ export function TestScreen({
               type="button"
               onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}
             >
-              Далі
+              {t('test.next')}
             </button>
           ) : (
             <button className="btn btn--accent" type="button" onClick={() => setConfirming(true)}>
-              Завершити і побачити рівень
+              {t('test.finish')}
             </button>
           )}
         </div>
@@ -164,7 +164,7 @@ export function TestScreen({
 
       <Card>
         <h3 className="card__title" style={{ fontSize: 'var(--fs-h4)' }}>
-          Перейти до питання
+          {t('test.jump')}
         </h3>
         <div className="pager">
           {questions.map((q, i) => {
@@ -176,7 +176,10 @@ export function TestScreen({
                 type="button"
                 className={`pager__dot ${cls}`.trim()}
                 onClick={() => setIndex(i)}
-                aria-label={`Питання ${i + 1}${answered ? ', є відповідь' : ', без відповіді'}`}
+                aria-label={t('test.jumpAria', {
+                  n: i + 1,
+                  state: answered ? t('test.jumpAnswered') : t('test.jumpUnanswered'),
+                })}
                 aria-current={i === index}
               >
                 {i + 1}
@@ -186,12 +189,12 @@ export function TestScreen({
         </div>
         <div className="row" style={{ marginTop: 'var(--sp-5)' }}>
           <button className="btn btn--accent" type="button" onClick={() => setConfirming(true)}>
-            Завершити і побачити рівень
+            {t('test.finish')}
           </button>
           <span className="small muted">
             {unanswered === 0
-              ? 'На всі питання є відповіді.'
-              : `Без відповіді ще: ${unanswered}.`}
+              ? t('test.allAnswered')
+              : t('test.stillUnanswered', { n: unanswered })}
           </span>
         </div>
       </Card>
@@ -199,18 +202,18 @@ export function TestScreen({
       {confirming ? (
         <div className="blocker" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
           <div className="blocker__panel">
-            <h2 id="confirm-title">Завершити спробу?</h2>
+            <h2 id="confirm-title">{t('test.confirmTitle')}</h2>
             <p className="muted">
               {unanswered === 0
-                ? `На всі ${questions.length} питань є відповіді. Змінити їх після завершення буде неможливо.`
-                : `Без відповіді лишилося ${unanswered} з ${questions.length} питань - вони будуть зараховані як неправильні.`}
+                ? t('test.confirmAll', { n: questions.length })
+                : t('test.confirmSome', { unanswered, total: questions.length })}
             </p>
             <div className="row" style={{ justifyContent: 'center', marginTop: 'var(--sp-5)' }}>
               <button className="btn btn--ghost" type="button" onClick={() => setConfirming(false)}>
-                Продовжити
+                {t('test.keepGoing')}
               </button>
               <button className="btn btn--primary" type="button" onClick={onSubmit} disabled={submitting}>
-                {submitting ? 'Надсилаємо...' : 'Завершити'}
+                {submitting ? t('test.submitting') : t('test.confirmFinish')}
               </button>
             </div>
           </div>

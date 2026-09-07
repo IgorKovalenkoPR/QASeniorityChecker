@@ -1,4 +1,5 @@
 import type { Competency } from './types.js';
+import type { Locale } from './types.js';
 
 /**
  * Кожен рядок навички з таблиці Performance Review ("QA roadmap employee copy"),
@@ -19,6 +20,22 @@ import type { Competency } from './types.js';
  * самої причини лишаються без питань, хоча й перелічені тут, бо вони є в
  * таблиці й можуть знадобитися для звітності.
  */
+/**
+ * The competency name in one language.
+ *
+ * The English side is `sheetRow` - the verbatim row from the Performance
+ * Review sheet, which was already stored for traceability and is already
+ * English. Using it rather than inventing a translation means the English
+ * interface shows a candidate the exact wording their review will use, which
+ * no translation of the Ukrainian label could guarantee.
+ *
+ * The coupling is deliberate but worth knowing: `sheetRow` is now read by the
+ * UI as well as by the audit trail, so changing it changes both.
+ */
+export function competencyLabel(competency: Competency, locale: Locale): string {
+  return locale === 'en' ? competency.sheetRow : competency.label;
+}
+
 export const COMPETENCIES: readonly Competency[] = [
   // --- Теорія -------------------------------------------------------------
   { id: 'test-artifacts', label: 'Тест-кейс / чек-лист / тестовий сценарій / тест-план / баг-репорт', sheetRow: 'Test case/checklist/test scenario/test plan/bug/bug report', group: 'theory', tier: 'trainee' },

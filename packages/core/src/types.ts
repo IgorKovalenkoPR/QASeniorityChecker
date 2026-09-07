@@ -75,7 +75,32 @@ export interface Competency {
 export interface AnswerOption {
   /** Stable per-question option id ('a' | 'b' | 'c' | 'd' ...). */
   id: string;
-  text: string;
+  text: LocalizedText;
+}
+
+/**
+ * The languages the product is offered in. English is the default; see
+ * apps/web/src/lib/i18n.tsx for the interface strings.
+ */
+export type Locale = 'en' | 'uk';
+
+/**
+ * A string the candidate reads, in every language the product offers.
+ *
+ * Both are required. The bank was written in Ukrainian and the English side
+ * arrived later, but making `en` optional would have meant a paper that
+ * silently serves Ukrainian to an English-speaking candidate - a difference in
+ * the instrument, not a cosmetic gap. Missing translations are therefore
+ * filled explicitly at definition time and counted, never left undefined.
+ */
+export interface LocalizedText {
+  en: string;
+  uk: string;
+}
+
+/** The one place that resolves a localized string, so the fallback is single. */
+export function localized(text: LocalizedText, locale: Locale): string {
+  return text[locale];
 }
 
 export interface Question {
@@ -84,12 +109,12 @@ export interface Question {
   tier: Tier;
   competencyId: string;
   source: QuestionSource;
-  text: string;
+  text: LocalizedText;
   options: AnswerOption[];
   /** Ids of the correct options. Length > 1 means multi-select. */
   correctOptionIds: string[];
   /** Shown on the result page only, never before submission. */
-  explanation: string;
+  explanation: LocalizedText;
 }
 
 /**
@@ -131,7 +156,7 @@ export interface CompetencyScore {
 export interface ScoreBreakdown {
   level: Level;
   /** The rule text that awarded this level, for the report. */
-  rationale: string;
+  rationale: LocalizedText;
   tiers: Record<Tier, TierScore>;
   competencies: CompetencyScore[];
   correct: number;
@@ -139,5 +164,5 @@ export interface ScoreBreakdown {
   percent: number;
   /** Rungs the candidate missed and what it would take to reach the next one. */
   nextLevel: Level | null;
-  nextLevelGap: string | null;
+  nextLevelGap: LocalizedText | null;
 }

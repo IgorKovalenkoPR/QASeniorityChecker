@@ -80,17 +80,17 @@ function main(): void {
       if (!q) throw new Error(`Variant ${variant.number} references unknown question ${id}`);
       const competency = COMPETENCY_BY_ID.get(q.competencyId);
       lines.push(
-        `**${index + 1}. ${q.text}**  ` +
+        `**${index + 1}. ${q.text.uk}**  ` +
           `\n<sub>${q.id} &middot; ${q.tier} &middot; ${SOURCE_LABELS[q.source] ?? q.source} ` +
           `&middot; ${competency?.label ?? q.competencyId}</sub>`,
       );
       lines.push('');
       for (const option of q.options) {
         const marker = q.correctOptionIds.includes(option.id) ? '**(правильна)**' : '';
-        lines.push(`- ${option.id}) ${option.text} ${marker}`.trimEnd());
+        lines.push(`- ${option.id}) ${option.text.uk} ${marker}`.trimEnd());
       }
       lines.push('');
-      lines.push(`> ${q.explanation}`);
+      lines.push(`> ${q.explanation.uk}`);
       lines.push('');
     });
     lines.push('---');

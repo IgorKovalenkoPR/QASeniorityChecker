@@ -51,8 +51,12 @@ export interface ProctorOptions {
   }>;
 }
 
-const AWAY_MESSAGE =
-  'Ви залишили сторінку тесту. Спроба завершиться, якщо це повториться або триватиме довше за кілька секунд.';
+/**
+ * The proctor runs outside React and has no locale, so it emits a translation
+ * key and the app renders it. Keeping the sentence here would have made the
+ * warning the one piece of the interface that stayed Ukrainian.
+ */
+const AWAY_MESSAGE = 'proctor.leftPage';
 
 export class Proctor {
   private readonly options: ProctorOptions;

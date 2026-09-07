@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import type { Identity, MetaResponse } from '../lib/api.js';
+import { useI18n } from '../lib/i18n.js';
 import { Banner, Card } from '../components/ui.js';
 
 /**
@@ -11,6 +12,11 @@ import { Banner, Card } from '../components/ui.js';
  * дізнається лише порушивши його, несправедливе, а спроба, завершена за
  * правилом, якого ніхто не пояснив, непридатна для розмови на Performance
  * Review.
+ *
+ * Що цей екран НЕ показує, і теж свідомо: скільки питань у банку, скільки є
+ * варіантів, як папір розкладений по щаблях і з яких силабусів узятий. Усе це
+ * читається як інструкція, до чого готуватися, а тест міряє не те, що людина
+ * встигла прочитати напередодні.
  */
 export function StartScreen({
   meta,
@@ -25,6 +31,7 @@ export function StartScreen({
   busy: boolean;
   error: string | null;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [accepted, setAccepted] = useState(false);
@@ -54,108 +61,63 @@ export function StartScreen({
   return (
     <div className="stack">
       <Card hero>
-        <h1>Перевірте свій рівень сеньйорності</h1>
+        <h1>{t('start.heading')}</h1>
         <p className="muted" style={{ marginTop: 'var(--sp-3)' }}>
-          Коротка самооцінка, яка визначає, де ви зараз перебуваєте на щаблях Performance Review
-          компанії - від Trainee&minus; до Senior. Результат є відправною точкою для планування
-          вашого review, а не самим review.
+          {t('start.intro')}
         </p>
         <div className="row" style={{ marginTop: 'var(--sp-5)' }}>
-          <Fact value={meta ? String(meta.questionsPerTest) : '20'} label="питань" />
-          <Fact value={`${minutes} хв`} label="обмеження часу" />
-          <Fact value={meta ? String(meta.variantCount) : '50'} label="варіантів тесту" />
-          <Fact value={meta ? String(meta.bank.total) : '500+'} label="питань у банку" />
+          <Fact
+            value={meta ? String(meta.questionsPerTest) : '20'}
+            label={t('start.stat.questions')}
+          />
+          <Fact value={t('start.stat.minutes', { n: minutes })} label={t('start.stat.time')} />
         </div>
       </Card>
 
       <div className="stack" style={{ gap: 'var(--sp-5)' }}>
         <Card>
-          <h2 className="card__title">Що охоплює тест</h2>
-          <p className="muted small">
-            Кожен варіант побудований за однією й тією самою схемою, тож двоє людей, які отримали
-            різні варіанти, все одно вимірюються за однією шкалою.
+          <h2 className="card__title">{t('start.covers.title')}</h2>
+          <p className="muted small">{t('start.covers.body')}</p>
+          <p className="muted small" style={{ marginTop: 'var(--sp-3)' }}>
+            {t('start.covers.noPrep')}
           </p>
-          <div className="table__scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Рівень</th>
-                  <th>Питань</th>
-                  <th>Джерела</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Trainee</td>
-                  <td>4</td>
-                  <td>Матриця Performance Review, термінологія</td>
-                </tr>
-                <tr>
-                  <td>Junior</td>
-                  <td>6</td>
-                  <td>Матриця Performance Review, ISTQB Foundation Level, глосарій</td>
-                </tr>
-                <tr>
-                  <td>Middle</td>
-                  <td>6</td>
-                  <td>Матриця Performance Review, ISTQB Test Analyst, глосарій</td>
-                </tr>
-                <tr>
-                  <td>Senior</td>
-                  <td>4</td>
-                  <td>Матриця Performance Review, ISTQB Test Manager і Test Analyst</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </Card>
 
         <Card>
-          <h2 className="card__title">Правила чесного проходження</h2>
-          <Banner tone="warning" title="Спроба завершується, якщо ви йдете зі сторінки тесту.">
-            Перехід на іншу вкладку, в інше вікно або в інший застосунок фіксується і передається на
-            сервер. Коротке переривання до {graceSec} секунд коштує вам попередження; далі кожне
-            переривання зараховується, і спроба завершується на {strikes}-му. Одна відсутність
-            довша за {hardSec} секунд завершує спробу одразу, і результат не зараховується.
+          <h2 className="card__title">{t('start.rules.title')}</h2>
+          <Banner tone="warning" title={t('start.rules.bannerTitle')}>
+            {t('start.rules.bannerBody', { grace: graceSec, strikes, hard: hardSec })}
           </Banner>
-          <ul className="small muted" style={{ marginTop: 'var(--sp-4)', paddingLeft: 'var(--sp-5)' }}>
-            <li>Тримайте це вікно активним протягом усього тесту.</li>
-            <li>Закрийте інші вкладки і вимкніть сповіщення перед початком.</li>
-            <li>Правий клік, копіювання і друк вимкнені або фіксуються.</li>
-            <li>
-              Таймер працює на сервері, тож перезавантаження сторінки його не скидає. Саме
-              перезавантаження спробу не завершує, але фіксується і зараховується як одне
-              переривання, тому не варто робити це без потреби.
-            </li>
-            <li>
-              Короткий обрив зʼєднання спробу не завершує: сервер чекає на вас кілька хвилин.
-            </li>
-            <li>
-              Кожна відповідь надсилається на сервер одразу після вибору. Якщо звʼязок пропаде,
-              надсилання повторюється автоматично, доки не вдасться - ви побачите про це
-              попередження, і втрачати чи вибирати відповідь заново не доведеться.
-            </li>
+          <ul
+            className="small muted"
+            style={{ marginTop: 'var(--sp-4)', paddingLeft: 'var(--sp-5)' }}
+          >
+            <li>{t('start.rules.foreground')}</li>
+            <li>{t('start.rules.closeTabs')}</li>
+            <li>{t('start.rules.copyPaste')}</li>
+            <li>{t('start.rules.reload')}</li>
+            <li>{t('start.rules.network')}</li>
+            <li>{t('start.rules.answers')}</li>
           </ul>
         </Card>
       </div>
 
       <Card>
-        <h2 className="card__title">Почати тест</h2>
+        <h2 className="card__title">{t('start.form.title')}</h2>
         <form className="stack" onSubmit={submit} noValidate>
           {identityFromGoogle ? (
             <div className="field">
-              <span className="field__label">Ви входите як</span>
+              <span className="field__label">{t('start.form.signedInAs')}</span>
               <div style={{ fontWeight: 500, color: 'var(--ink-strong)' }}>{identity.name}</div>
               <span className="field__hint">
-                {identity.email} - результат приєднається до цієї адреси. Змінити її тут не можна:
-                вона підтверджена входом через Google.
+                {t('start.form.identityFixed', { email: identity.email })}
               </span>
             </div>
           ) : (
             <>
               <div className="field">
                 <label className="field__label" htmlFor="candidate-name">
-                  Повне імʼя
+                  {t('start.form.name')}
                 </label>
                 <input
                   id="candidate-name"
@@ -165,13 +127,13 @@ export function StartScreen({
                   onChange={(event) => setName(event.target.value)}
                 />
                 {touched && !nameValid ? (
-                  <span className="field__error">Будь ласка, введіть своє імʼя.</span>
+                  <span className="field__error">{t('start.form.nameError')}</span>
                 ) : null}
               </div>
 
               <div className="field">
                 <label className="field__label" htmlFor="candidate-email">
-                  Робоча пошта
+                  {t('start.form.email')}
                 </label>
                 <input
                   id="candidate-email"
@@ -181,11 +143,9 @@ export function StartScreen({
                   autoComplete="email"
                   onChange={(event) => setEmail(event.target.value)}
                 />
-                <span className="field__hint">
-                  Використовується, щоб приєднати результат до вашого запису Performance Review.
-                </span>
+                <span className="field__hint">{t('start.form.emailHint')}</span>
                 {touched && !emailValid ? (
-                  <span className="field__error">Будь ласка, введіть коректну адресу пошти.</span>
+                  <span className="field__error">{t('start.form.emailError')}</span>
                 ) : null}
               </div>
             </>
@@ -198,17 +158,14 @@ export function StartScreen({
               onChange={(event) => setAccepted(event.target.checked)}
               style={{ marginTop: '4px' }}
             />
-            <span className="small">
-              Я прочитав правила чесного проходження і розумію, що вихід із цієї сторінки завершує
-              мою спробу.
-            </span>
+            <span className="small">{t('start.form.accept')}</span>
           </label>
 
           {error ? <Banner tone="danger">{error}</Banner> : null}
 
           <div>
             <button className="btn btn--primary" type="submit" disabled={!canStart}>
-              {busy ? 'Запускаємо...' : 'Почати тест'}
+              {busy ? t('start.form.starting') : t('start.form.submit')}
             </button>
           </div>
         </form>
@@ -219,11 +176,9 @@ export function StartScreen({
 
 function Fact({ value, label }: { value: string; label: string }) {
   return (
-    <div>
-      <div style={{ fontSize: 'var(--fs-h2)', fontWeight: 'var(--fw-bold)', color: 'var(--ink-strong)' }}>
-        {value}
-      </div>
-      <div className="small muted">{label}</div>
+    <div className="fact">
+      <div className="fact__value">{value}</div>
+      <div className="fact__label">{label}</div>
     </div>
   );
 }

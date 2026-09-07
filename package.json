@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "check:bundle": "tsx scripts/check-bundle-leak.ts",
     "typecheck": "tsc -b --pretty && tsc --noEmit -p apps/web",
-    "export:variants": "npm run export:variants -w @qasc/api -- ../../docs/variants.md"
+    "export:variants": "npm run export:variants -w @qasc/api -- ../../docs/variants.md",
+    "coverage:translation": "tsx scripts/translation-coverage.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

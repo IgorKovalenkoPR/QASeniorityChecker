@@ -75,7 +75,7 @@ export function validateBank(bank: readonly Question[] = QUESTION_BANK): string[
     if (seenIds.has(q.id)) problems.push(`Duplicate question id: ${q.id}`);
     seenIds.add(q.id);
 
-    const normalised = q.text.trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalised = q.text.uk.trim().toLowerCase().replace(/\s+/g, ' ');
     const previous = seenText.get(normalised);
     if (previous) problems.push(`Duplicate question text in ${previous} and ${q.id}`);
     seenText.set(normalised, q.id);
@@ -86,9 +86,9 @@ export function validateBank(bank: readonly Question[] = QUESTION_BANK): string[
     }
 
     if (q.correctOptionIds.length === 0) problems.push(`${q.id}: no correct option`);
-    if (q.explanation.trim().length < 20) problems.push(`${q.id}: explanation too short to be useful`);
+    if (q.explanation.uk.trim().length < 20) problems.push(`${q.id}: explanation too short to be useful`);
 
-    const optionTexts = new Set(q.options.map((o) => o.text.trim().toLowerCase()));
+    const optionTexts = new Set(q.options.map((o) => o.text.uk.trim().toLowerCase()));
     if (optionTexts.size !== q.options.length) problems.push(`${q.id}: duplicate option text`);
 
     for (const id of q.correctOptionIds) {

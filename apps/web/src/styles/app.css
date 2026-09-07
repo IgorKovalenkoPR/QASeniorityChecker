@@ -532,3 +532,58 @@ a:hover {
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
+
+/* --- language switch ---------------------------------------------------- */
+
+/*
+ * Two languages, so a pair of buttons beats a select: the current choice and
+ * the alternative are both visible without opening anything, which matters on
+ * a screen someone lands on before they have read a word of it.
+ */
+.lang {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-0);
+}
+
+.lang__btn {
+  min-width: 34px;
+  padding: 2px var(--sp-2);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--ls-caps);
+  cursor: pointer;
+}
+
+.lang__btn:hover { color: var(--ink-body); }
+
+.lang__btn--on {
+  background: var(--brand-primary);
+  color: var(--brand-on-primary);
+}
+
+.lang__btn:focus-visible {
+  outline: 2px solid var(--brand-ring);
+  outline-offset: 1px;
+}
+
+/* Names the language for a screen reader without printing it twice on screen. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

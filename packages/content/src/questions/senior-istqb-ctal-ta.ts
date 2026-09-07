@@ -1,4 +1,5 @@
 import { defineQuestions } from '../define.js';
+import { seniorCtalTaEn } from './senior-istqb-ctal-ta.en.js';
 
 /**
  * Матеріал ISTQB Advanced Level - Test Analyst на рівні Senior: та частина
@@ -96,4 +97,4 @@ export const seniorCtalTaQuestions = defineQuestions('senior', 'istqb-ctal-ta', 
     'Зусилля на аналіз тестування найкраще вкладати туди, де:',
     ['Ризик високий, а тестовий базис найслабший', 'Вимоги найясніші', 'Код найновіший', 'Про це просять розробники'], 0,
     'Ясні вимоги при низькому ризику потребують найменше аналізу; протилежний кут - найбільше.'],
-]);
+], seniorCtalTaEn);
