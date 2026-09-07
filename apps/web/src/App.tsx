@@ -10,6 +10,7 @@ import type {
 } from './lib/api.js';
 import { AnswerQueue } from './lib/answerQueue.js';
 import { LocaleSwitch, useI18n } from './lib/i18n.js';
+import type { StringKey } from './lib/i18n.js';
 import type { AnswerQueueStatus } from './lib/answerQueue.js';
 import { Proctor } from './lib/proctor.js';
 import { Banner, Card } from './components/ui.js';
@@ -24,10 +25,11 @@ import { ResultScreen } from './screens/ResultScreen.js';
  * Kept in sessionStorage, not localStorage, on purpose: sessionStorage is scoped
  * to a single tab, so opening the attempt in a second tab does not silently hand
  * that tab a working token. It also means a reload resumes cleanly: the reload
- * fires `pagehide`, so it is recorded as one navigation_away, but that costs a
- * single strike out of four rather than the attempt. An accidental refresh
+ * fires `pagehide`, so it is recorded as one navigation_away, but that costs one
+ * interruption of the two rather than the attempt. An accidental refresh
  * therefore is not fatal - which matters, because the start screen tells the
- * candidate the server-side timer survives a reload.
+ * candidate the server-side timer survives a reload. It is half the budget,
+ * though, and the start screen says that too.
  */
 const SESSION_KEY = 'qasc.attempt';
 
@@ -71,7 +73,10 @@ export function App() {
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [result, setResult] = useState<ResultResponse | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
-  const [warning, setWarning] = useState<string | null>(null);
+  // A translation key, resolved where it is rendered. Holding the rendered
+  // sentence instead would freeze it in whichever language was active when the
+  // warning fired, and the proctor - which raises most of them - has no locale.
+  const [warning, setWarning] = useState<StringKey | null>(null);
   // The cause, in both languages, as the integrity policy composed it. Held as
   // LocalizedText rather than a rendered string so switching language on the
   // termination screen re-renders the sentence instead of freezing whichever
@@ -269,14 +274,14 @@ export function App() {
       },
       handlers: {
         onEvent: () => undefined,
-        onLocalWarning: (message) => setWarning(message),
+        onLocalWarning: (key) => setWarning(key),
         onVerdict: (verdict) => {
           setStrikesRemaining(verdict.remaining);
           if (verdict.terminate) terminate(verdict.reason);
           else if (verdict.strikes > 0) {
             // Only the cause. TestScreen appends the remaining-strike count, so
             // including it here too would print the sentence twice.
-            setWarning(t('proctor.navAway'));
+            setWarning('proctor.navAway');
           }
         },
       },

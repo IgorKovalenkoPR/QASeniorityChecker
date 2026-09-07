@@ -70,13 +70,19 @@ export interface PaperQuestion {
   options: { id: string; text: LocalizedText }[];
   multiSelect: boolean;
   /**
-   * Tier and competency are included so the candidate can see what a question is
-   * about. They reveal nothing about the answer, and hiding them would make the
-   * result page impossible to explain.
+   * Tier, competency and source are deliberately NOT here.
+   *
+   * They used to be, on the argument that they tell the candidate what a
+   * question is about and give nothing away about the answer. Both halves were
+   * wrong. They tell a candidate which questions are the hard ones and which
+   * syllabus each came from while the timer is running, which invites spending
+   * the remaining minutes strategically instead of answering honestly - and
+   * removing them from the screen alone would have left the same information one
+   * devtools tab away.
+   *
+   * Nothing is lost on the result page: `ResultQuestion` reads all three from the
+   * bank when the result is built, so the rung stays fully explainable.
    */
-  tier: string;
-  competencyId: string;
-  source: string;
 }
 
 /** The ordered questions of a variant, as stored in the bank. */
@@ -100,9 +106,6 @@ export function buildPaper(attemptId: string, variantNumber: number): PaperQuest
       text: q.text,
       options: order.map((o) => ({ id: opaqueOptionId(attemptId, q.id, o.id), text: o.text })),
       multiSelect: q.correctOptionIds.length > 1,
-      tier: q.tier,
-      competencyId: q.competencyId,
-      source: q.source,
     } satisfies PaperQuestion;
   });
 }

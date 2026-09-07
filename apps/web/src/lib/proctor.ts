@@ -1,5 +1,6 @@
 import type { IntegrityEvent, IntegrityEventType, IntegrityVerdict } from '@qasc/core';
 import { beaconIntegrity } from './api.js';
+import type { StringKey } from './i18n.js';
 
 /**
  * Client-side exam proctor.
@@ -78,8 +79,15 @@ export interface ProctorHandlers {
   onEvent: (event: IntegrityEvent) => void;
   /** The server verdict came back. The only authority on termination. */
   onVerdict: (verdict: IntegrityVerdict) => void;
-  /** A transient warning to surface immediately, before the server answers. */
-  onLocalWarning: (message: string) => void;
+  /**
+   * A transient warning to surface immediately, before the server answers.
+   *
+   * A translation KEY, not a sentence - the proctor runs outside React and has
+   * no locale. Typed as `StringKey` rather than `string` because it was typed
+   * as `string` and the app passed it straight to the banner, so candidates saw
+   * the literal text `proctor.leftPage` the moment they left the page.
+   */
+  onLocalWarning: (key: StringKey) => void;
 }
 
 export interface ProctorOptions {
