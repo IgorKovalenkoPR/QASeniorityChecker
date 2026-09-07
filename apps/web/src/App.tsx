@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { IntegrityEvent } from '@qasc/core';
+import type { IntegrityEvent, LocalizedText } from '@qasc/core';
 import { ApiError, api } from './lib/api.js';
 import type {
   AttemptView,
@@ -58,7 +58,7 @@ function writeSession(session: StoredSession | null): void {
 type Phase = 'loading' | 'signin' | 'start' | 'test' | 'result' | 'terminated';
 
 export function App() {
-  const { t } = useI18n();
+  const { t, text } = useI18n();
   const [phase, setPhase] = useState<Phase>('loading');
   const [identity, setIdentity] = useState<Identity | null>(null);
   // Set by the OAuth callback when it refuses the sign-in, so the reason can be
@@ -72,7 +72,11 @@ export function App() {
   const [result, setResult] = useState<ResultResponse | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [warning, setWarning] = useState<string | null>(null);
-  const [terminationReason, setTerminationReason] = useState<string | null>(null);
+  // The cause, in both languages, as the integrity policy composed it. Held as
+  // LocalizedText rather than a rendered string so switching language on the
+  // termination screen re-renders the sentence instead of freezing whichever
+  // language happened to be active when the attempt ended.
+  const [terminationReason, setTerminationReason] = useState<LocalizedText | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saveStatus, setSaveStatus] = useState<AnswerQueueStatus>({
@@ -144,7 +148,12 @@ export function App() {
         if (resumed.attempt.status === 'in_progress') {
           setPhase('test');
         } else if (resumed.attempt.status === 'terminated') {
-          setTerminationReason(resumed.attempt.terminationReason);
+          // `terminationReason` on the attempt is the reviewer's record: one
+          // English sentence, stored for the spreadsheet. Showing it here would
+          // put English in front of a Ukrainian reader, so a resumed
+          // termination gets the localised general line instead. The specific
+          // cause was shown at the moment it happened.
+          setTerminationReason(null);
           setPhase('terminated');
         } else {
           await loadResult(session.attemptId, session.token);
@@ -186,7 +195,7 @@ export function App() {
         onFatal: (err: unknown) => {
           const active = attemptRef.current;
           if (!(err instanceof ApiError) || !active) return;
-          if (err.code === 'attempt_terminated') terminateRef.current?.(err.message);
+          if (err.code === 'attempt_terminated') terminateRef.current?.(null);
           else if (err.code.startsWith('attempt_')) {
             void loadResultRef.current?.(active.id, active.token);
           }
@@ -209,7 +218,7 @@ export function App() {
       setPhase('result');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'attempt_terminated') {
-        setTerminationReason(err.message);
+        setTerminationReason(null);
         setPhase('terminated');
         return;
       }
@@ -228,18 +237,18 @@ export function App() {
 
   // --- termination ---------------------------------------------------------
 
-  const terminate = useCallback((reason: string | null) => {
+  const terminate = useCallback((reason: LocalizedText | null) => {
     proctorRef.current?.stop();
     proctorRef.current = null;
     discardQueue();
-    setTerminationReason(reason ?? t('term.default'));
+    setTerminationReason(reason);
     setPhase('terminated');
     writeSession(null);
   }, [discardQueue]);
 
   // The queue is built before terminate and loadResult exist, and both are
   // recreated by hooks it must not depend on. Refs keep the wiring one-way.
-  const terminateRef = useRef<((reason: string | null) => void) | null>(null);
+  const terminateRef = useRef<((reason: LocalizedText | null) => void) | null>(null);
   const loadResultRef = useRef<((id: string, token: string) => Promise<void>) | null>(null);
   terminateRef.current = terminate;
   loadResultRef.current = loadResult;
@@ -299,7 +308,7 @@ export function App() {
           const response = await api.heartbeat(attempt.id, token);
           applyAttempt(response.attempt, token);
           if (response.attempt.status === 'terminated') {
-            terminate(response.attempt.terminationReason);
+            terminate(null);
           } else if (response.attempt.status !== 'in_progress') {
             await loadResult(attempt.id, token);
           }
@@ -389,7 +398,7 @@ export function App() {
       setPhase('result');
     } catch (err) {
       if (err instanceof ApiError && err.code === 'attempt_terminated') {
-        terminate(err.message);
+        terminate(null);
       } else {
         setError(err instanceof Error ? err.message : t('err.submit'));
       }
@@ -467,7 +476,7 @@ export function App() {
           <Card hero>
             <h1>{t('term.heading')}</h1>
             <Banner tone="danger" title={t('term.rulesTitle')}>
-              {terminationReason ?? t('term.default')}
+              {terminationReason ? text(terminationReason) : t('term.default')}
             </Banner>
             <p className="muted" style={{ marginTop: 'var(--sp-5)' }}>
               {t('term.body')}

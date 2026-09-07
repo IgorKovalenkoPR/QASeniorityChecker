@@ -1,19 +1,38 @@
 /**
  * Exam integrity policy.
  *
- * The requirement is "end the test if the candidate navigates away, so nobody
- * can look up answers". Implemented as a strike system rather than a hair
- * trigger, because a browser fires the same events for an OS notification, a
- * password-manager popup and an incoming call as it does for a candidate
- * opening a second tab. Terminating an honest attempt is a worse failure than
- * letting one borderline blur through, so a short blur costs a warning and a
- * sustained one - the only kind you can actually read another page during -
- * ends the attempt.
+ * The requirement is "end the test if the candidate leaves the page, so nobody
+ * can look up answers". Two failures are possible and they are not symmetric:
+ * letting one borderline absence through costs a lookup on one question out of
+ * twenty, while terminating an honest attempt destroys the result and the
+ * candidate's trust in the whole exercise. So the policy is not symmetric
+ * either - but it is strict about the one thing it is actually about.
+ *
+ * The rule that shapes everything below:
+ *
+ *   A strike may only be charged for an action the candidate took on purpose
+ *   and can perceive themselves taking.
+ *
+ * That is what separates this version from the previous one. Before, a stray
+ * F12, a print shortcut, a two-minute wifi drop and a page reload all drew on
+ * the same budget as a tab switch, so two candidates who behaved identically
+ * could get different verdicts and neither could tell why. Anything that is a
+ * guess about intent (a keypress that MIGHT mean devtools) or an event the
+ * candidate cannot see happening (server-observed silence) is now recorded for
+ * the reviewer and charged nothing. What is left in the budget - leaving the
+ * page, closing it, opening the attempt twice - is deliberate, visible to the
+ * person doing it, and announced on the start screen before the timer starts.
+ *
+ * Facts that end an attempt on their own are kept out of the strike count
+ * entirely (see `strikeCost`), so "how many interruptions do I have left" has
+ * one answer and it does not silently mean something else.
  *
  * This module is shared by the browser and the API on purpose: the client uses
  * it to render the right warning immediately, the server uses it to make the
  * decision. The client's verdict is advisory; only the server's is binding.
  */
+
+import type { LocalizedText } from './types.js';
 
 export const INTEGRITY_EVENT_TYPES = [
   /** document.visibilityState became 'hidden' - tab switch, minimise, app switch. */
@@ -37,10 +56,10 @@ export const INTEGRITY_EVENT_TYPES = [
   /** beforeunload / pagehide - the candidate navigated away or closed the tab. */
   'navigation_away',
   /**
-   * The server stopped hearing from the client for longer than the grace
-   * window. Deliberately distinct from `visibility_hidden`: the server cannot
-   * tell a closed tab from a dropped connection, a VPN reconnect or a sleeping
-   * laptop, so this type carries its own, far more forgiving thresholds.
+   * The server stopped hearing from the client. Deliberately distinct from
+   * `visibility_hidden`: the server cannot tell a closed tab from a dropped
+   * connection, a VPN reconnect or a sleeping laptop, so this type carries its
+   * own, far more forgiving threshold and never costs a strike.
    */
   'heartbeat_gap',
 ] as const;
@@ -63,98 +82,163 @@ export interface IntegrityPolicy {
   /** Any absence longer than this terminates immediately, whatever the count. */
   hardTerminateMs: number;
   /**
-   * A server-observed heartbeat gap shorter than this costs nothing. Silence is
-   * not evidence: it is far more often a flaky network than a candidate reading
-   * another page, and the candidate cannot even see it happening.
+   * A server-observed silence at or above this ends the attempt. Below it,
+   * silence costs nothing at all: it is far more often a flaky network than a
+   * candidate reading another page, and - the deciding argument - the candidate
+   * cannot see it happening, so it can never satisfy the deliberate-and-visible
+   * rule this policy is built on.
    */
-  heartbeatStrikeMs: number;
-  /** A heartbeat gap at or above this ends the attempt on its own. */
   heartbeatTerminateMs: number;
   /** Strike cost per event type. 0 = logged for the report but never punished. */
   weights: Record<IntegrityEventType, number>;
 }
 
 /**
- * Default policy. Tuned so that:
- *   - a single accidental sub-2s blur is free (warning only),
- *   - four focus losses end the attempt,
- *   - one deliberate 30s+ absence ends the attempt on its own,
- *   - a page reload costs one strike, not the attempt: the start screen tells
- *     the candidate a reload is safe, and failing someone for an action you
- *     explicitly allowed is the one failure mode that destroys trust outright,
- *   - a server-observed silence has to reach five minutes to be fatal,
- *   - copy/paste/right-click are recorded for the reviewer but do not, by
- *     themselves, fail an honest candidate who highlights text while reading.
+ * Default policy.
  *
- * The thresholds are deliberately loose. Terminating an honest attempt destroys
- * the result and the candidate's trust in the tool, while a borderline blur
- * that slips through costs at most a lookup on one question out of twenty. The
- * two failures are not symmetric, so the policy is not symmetric either.
+ * Two interruptions end the attempt. That is deliberately tight, and it is
+ * only defensible because of what was taken OUT of the budget at the same
+ * time: with a budget of two, anything a candidate cannot control would decide
+ * the outcome roughly half the time it fired.
+ *
+ * What costs a strike:
+ *   - leaving the page for longer than `graceMs` (tab switch, another window,
+ *     minimising, switching app),
+ *   - closing or navigating away from the page, which includes a reload,
+ *   - opening the same attempt in a second tab or browser.
+ *
+ * What ends the attempt on its own, without touching the count:
+ *   - one absence of `hardTerminateMs` or more, which is long enough to read
+ *     another page and is the behaviour the requirement exists to stop,
+ *   - server-observed silence of `heartbeatTerminateMs` or more, which is the
+ *     only signal a tampered client cannot fake.
+ *
+ * What is recorded for the reviewer and charged nothing:
+ *   - copy, cut, paste and right-click: honest candidates highlight text while
+ *     reading, and the leak this would prevent is smaller than the injustice,
+ *   - print and devtools shortcuts: a keypress is a guess about intent, not
+ *     evidence of anything, and a guess must not decide a result,
+ *   - shorter server-observed silences: see `heartbeatTerminateMs`,
+ *   - fullscreen exit: nothing requests fullscreen, so nothing emits this.
+ *
+ * A sub-`graceMs` interruption is free because it is not an act: a Teams
+ * popup, a password manager and an incoming call all steal focus for under a
+ * second whatever the candidate does.
  */
 export const DEFAULT_INTEGRITY_POLICY: IntegrityPolicy = {
-  terminateAtStrikes: 4,
+  terminateAtStrikes: 2,
   graceMs: 2_000,
   hardTerminateMs: 30_000,
-  heartbeatStrikeMs: 120_000,
   heartbeatTerminateMs: 300_000,
   weights: {
     visibility_hidden: 1,
     window_blur: 1,
-    fullscreen_exit: 1,
+    fullscreen_exit: 0,
     copy_attempt: 0,
     paste_attempt: 0,
     context_menu: 0,
-    print_attempt: 1,
-    devtools_suspected: 1,
-    duplicate_session: 2,
+    print_attempt: 0,
+    devtools_suspected: 0,
+    duplicate_session: 1,
     navigation_away: 1,
-    heartbeat_gap: 1,
+    heartbeat_gap: 0,
   },
 };
 
 export interface IntegrityVerdict {
   strikes: number;
   terminate: boolean;
-  /** Why, in words a candidate can understand. */
-  reason: string | null;
+  /**
+   * Why, in words a candidate can understand, in both languages.
+   *
+   * Localised here rather than at the edges because the same sentence is shown
+   * on screen in the candidate's language, stored on the attempt and written
+   * into the reviewer's spreadsheet in English. Three formatters would drift,
+   * and the one place drift would show is the moment an attempt ends - the
+   * worst possible moment to be confusing.
+   */
+  reason: LocalizedText | null;
   /** Strikes left before termination. */
   remaining: number;
 }
 
-/** Strike cost of a single event under a policy. */
+/**
+ * Strike cost of a single event under a policy.
+ *
+ * Terminating conditions are checked BEFORE the weight table, so an event can
+ * be fatal on its own while costing nothing towards the ordinary count. That
+ * ordering is the whole reason a two-minute network gap is free while a
+ * five-minute one is final.
+ */
 export function strikeCost(event: IntegrityEvent, policy: IntegrityPolicy): number {
-  const base = policy.weights[event.type] ?? 0;
-  if (base === 0) return 0;
   const duration = event.durationMs ?? 0;
 
-  // A heartbeat gap is server-derived: nobody reported it, the server merely
-  // stopped hearing. It gets its own scale, because the same sixty seconds of
-  // silence is produced by a cheating candidate and by a reconnecting VPN, and
-  // only one of those should cost the attempt.
+  // Server-derived: nobody reported this, the server merely stopped hearing.
+  // The same sixty seconds of silence is produced by a cheating candidate and
+  // by a reconnecting VPN, and only one of those should cost anything - so
+  // silence is either long enough to be final or it is free.
   if (event.type === 'heartbeat_gap') {
-    if (duration >= policy.heartbeatTerminateMs) return policy.terminateAtStrikes;
-    if (duration < policy.heartbeatStrikeMs) return 0;
-    return base;
+    return duration >= policy.heartbeatTerminateMs ? policy.terminateAtStrikes : 0;
   }
 
   const isAbsence = event.type === 'visibility_hidden' || event.type === 'window_blur';
-  if (isAbsence) {
-    if (duration >= policy.hardTerminateMs) return policy.terminateAtStrikes;
-    if (duration < policy.graceMs) return 0;
-  }
+  if (isAbsence && duration >= policy.hardTerminateMs) return policy.terminateAtStrikes;
+
+  const base = policy.weights[event.type] ?? 0;
+  if (base === 0) return 0;
+  if (isAbsence && duration < policy.graceMs) return 0;
   return base;
 }
 
-const REASONS: Partial<Record<IntegrityEventType, string>> = {
-  visibility_hidden: 'Вкладку з тестом було приховано. Перемикання вкладок, застосунків або вікон завершує спробу.',
-  window_blur: 'Вікно тесту втратило фокус. Спроба має лишатися на передньому плані.',
-  fullscreen_exit: 'Повноекранний режим було вимкнено.',
-  navigation_away: 'Сторінку тесту було закрито або залишено надто багато разів.',
-  heartbeat_gap:
-    'Звʼязок із сервером було втрачено надто надовго, і спробу не вдалося продовжити.',
-  duplicate_session: 'Ту саму спробу було відкрито в іншій вкладці або браузері.',
-  devtools_suspected: 'Схоже, було відкрито інструменти розробника.',
-  print_attempt: 'Було використано комбінацію клавіш для друку або захоплення екрана.',
+const REASONS: Partial<Record<IntegrityEventType, LocalizedText>> = {
+  // One event type covers two different causes - a single long absence, or the
+  // last of several - and the candidate knows which of the two happened, so the
+  // sentence has to cover both rather than pick one and be wrong half the time.
+  visibility_hidden: {
+    en: 'The test tab was hidden – either for longer than the rules allow, or once too often.',
+    uk: 'Вкладку з тестом було приховано — або надто довго, або надто багато разів.',
+  },
+  window_blur: {
+    en: 'The test window lost focus – either for longer than the rules allow, or once too often.',
+    uk: 'Вікно тесту втратило фокус — або надто довго, або надто багато разів.',
+  },
+  fullscreen_exit: {
+    en: 'Fullscreen mode was switched off during the attempt.',
+    uk: 'Під час спроби було вимкнено повноекранний режим.',
+  },
+  navigation_away: {
+    en: 'The test page was closed or left too many times.',
+    uk: 'Сторінку тесту було закрито або залишено надто багато разів.',
+  },
+  // Says "several minutes" rather than "too long": it matches the threshold the
+  // start screen promised, so the candidate can hold the tool to its own word.
+  heartbeat_gap: {
+    en: 'The connection to the server was lost for several minutes, so the attempt could not be continued.',
+    uk: 'Звʼязок із сервером було втрачено на кілька хвилин, тож продовжити спробу не вдалося.',
+  },
+  duplicate_session: {
+    en: 'The same attempt was opened in a second tab or browser.',
+    uk: 'Ту саму спробу було відкрито в другій вкладці або в іншому браузері.',
+  },
+  // Unreachable at the current weights, and kept anyway: the weights are
+  // configuration, and a policy that turns them back up should not fall through
+  // to the generic sentence.
+  devtools_suspected: {
+    en: 'The developer tools appear to have been opened.',
+    uk: 'Схоже, було відкрито інструменти розробника.',
+  },
+  print_attempt: {
+    en: 'A print or screen-capture shortcut was used.',
+    uk: 'Було використано комбінацію клавіш для друку або захоплення екрана.',
+  },
+};
+
+// The same pair as the interface dictionary's `term.default`, deliberately. The
+// old wording ("the rules were violated") was a flat accusation from a system
+// that admits one screen lower that it might be wrong.
+const DEFAULT_REASON: LocalizedText = {
+  en: 'This attempt was ended under the integrity rules.',
+  uk: 'Цю спробу завершено за правилами чесного проходження тесту.',
 };
 
 /**
@@ -167,14 +251,14 @@ export function evaluateIntegrity(
   policy: IntegrityPolicy = DEFAULT_INTEGRITY_POLICY,
 ): IntegrityVerdict {
   let strikes = 0;
-  let reason: string | null = null;
+  let reason: LocalizedText | null = null;
 
   for (const event of events) {
     const cost = strikeCost(event, policy);
     if (cost === 0) continue;
     strikes += cost;
     if (strikes >= policy.terminateAtStrikes && reason === null) {
-      reason = REASONS[event.type] ?? 'Порушено правила чесності проходження тесту.';
+      reason = REASONS[event.type] ?? DEFAULT_REASON;
     }
   }
 

@@ -297,7 +297,10 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
     if (attempt.status === 'terminated') {
       throw new AttemptError(
         409,
-        attempt.termination_reason ?? 'Цю спробу завершено за правилами чесності проходження тесту.',
+        // Read by machines and by the reviewer, never rendered to a candidate:
+        // the client recognises the `attempt_terminated` code and shows its own
+        // localised sentence instead of this one.
+        attempt.termination_reason ?? 'This attempt was ended under the test integrity rules.',
         'attempt_terminated',
       );
     }

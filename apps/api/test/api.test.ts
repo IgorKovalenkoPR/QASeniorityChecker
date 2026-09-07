@@ -293,28 +293,41 @@ describe('exam integrity', () => {
     expect(response.json().attempt.status).toBe('in_progress');
   });
 
-  it('warns on ordinary absences and terminates on the fourth', async () => {
+  it('warns on the first absence and terminates on the second', async () => {
+    // Reported in two separate requests on purpose: the verdict is recomputed
+    // by replaying the stored log, so the count has to survive the round trip
+    // rather than live in one request's body.
     const started = await startAttempt();
     const first = await report(started, [
       { type: 'visibility_hidden', occurredAt: Date.now() - 1000, durationMs: 3000 },
     ]);
     expect(first.json().verdict.terminate).toBe(false);
-    expect(first.json().verdict.remaining).toBe(3);
+    expect(first.json().verdict.remaining).toBe(1);
+    expect(first.json().attempt.status).toBe('in_progress');
 
     const second = await report(started, [
-      { type: 'window_blur', occurredAt: Date.now() - 900, durationMs: 3000 },
-    ]);
-    expect(second.json().verdict.terminate).toBe(false);
-    expect(second.json().attempt.status).toBe('in_progress');
-
-    await report(started, [
-      { type: 'visibility_hidden', occurredAt: Date.now() - 800, durationMs: 3000 },
-    ]);
-    const fourth = await report(started, [
       { type: 'window_blur', occurredAt: Date.now(), durationMs: 3000 },
     ]);
-    expect(fourth.json().verdict.terminate).toBe(true);
-    expect(fourth.json().attempt.status).toBe('terminated');
+    expect(second.json().verdict.terminate).toBe(true);
+    expect(second.json().verdict.remaining).toBe(0);
+    expect(second.json().attempt.status).toBe('terminated');
+  });
+
+  it('does not spend the budget on things the candidate cannot control', async () => {
+    // The point of the two-interruption budget: it is only defensible while
+    // nothing outside the candidate's control draws on it. A four-minute
+    // network gap and a fistful of guessed devtools keypresses used to cost
+    // three of four strikes between them.
+    const started = await startAttempt();
+    const response = await report(started, [
+      { type: 'heartbeat_gap', occurredAt: Date.now() - 300_000, durationMs: 240_000 },
+      { type: 'devtools_suspected', occurredAt: Date.now() - 5_000 },
+      { type: 'print_attempt', occurredAt: Date.now() - 4_000 },
+      { type: 'copy_attempt', occurredAt: Date.now() - 3_000 },
+    ]);
+    expect(response.json().verdict.strikes).toBe(0);
+    expect(response.json().verdict.terminate).toBe(false);
+    expect(response.json().attempt.status).toBe('in_progress');
   });
 
   it('terminates on a single long absence', async () => {
@@ -659,8 +672,10 @@ describe('reinstating a falsely terminated attempt', () => {
     expect(result.status).toBe('submitted');
     expect(result.answersRevealed).toBe(true);
     expect(result.breakdown.correct).toBe(answered);
-    expect(reinstated.previousReason).toContain('приховано');
-    expect(reinstated.previousStrikes).toBeGreaterThanOrEqual(4);
+    // Stored in English: this column is the reviewer's record and the source
+    // of the spreadsheet cell. The candidate saw the localised sentence.
+    expect(reinstated.previousReason).toContain('hidden');
+    expect(reinstated.previousStrikes).toBeGreaterThanOrEqual(2);
     expect(reinstated.forgivenEvents).toBe(1);
     expect(reinstated.note).toContain('звінок');
   });
@@ -719,7 +734,7 @@ describe('reinstating a falsely terminated attempt', () => {
     expect(body.events[0].forgiven).toBe(1);
     expect(body.events[0].type).toBe('visibility_hidden');
     expect(body.reinstatement.note).toContain('звінок');
-    expect(body.reinstatement.previousStrikes).toBeGreaterThanOrEqual(4);
+    expect(body.reinstatement.previousStrikes).toBeGreaterThanOrEqual(2);
   });
 
   it('marks the attempt as reinstated in the roster, so it never reads as a clean run', async () => {
