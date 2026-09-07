@@ -213,7 +213,7 @@ being regenerated, or variant generation stopped being deterministic.
 | `QASC_GOOGLE_CLIENT_SECRET` | *unset* | **Required** in `google` mode |
 | `QASC_SESSION_SECRET` | *generated in dev* | **Required in production**, >= 32 chars |
 | `QASC_SESSION_TTL_SECONDS` | `43200` | How long a sign-in lasts (12 h) |
-| `QASC_PUBLIC_URL` | *derived from the request* | Set when the derived origin is not the registered one |
+| `QASC_PUBLIC_URL` | *derived from the request* | Absolute origin, scheme included, no path. https in production |
 | `QASC_SHEET_ID` | *unset* | Spreadsheet to append results to. Unset = queue but do not send |
 | `QASC_SHEET_TAB` | `Attempts` | Tab name. Must already exist |
 | `QASC_GOOGLE_SERVICE_ACCOUNT_JSON` | *unset* | The service account key, whole JSON blob |
@@ -251,6 +251,11 @@ https://<your-host>/api/auth/google/callback
 
    Google compares this byte for byte. If you also want to run it locally, add
    `http://localhost:3000/api/auth/google/callback` as a second entry.
+
+   Set `QASC_PUBLIC_URL` to the same origin - **including** `https://` and nothing after the
+   host. It is validated at startup, because a bare hostname there produces
+   `host/api/auth/google/callback` as the redirect URI: not a URL at all, and the only place
+   that shows up is a Google error page in front of a candidate.
 3. Copy the client ID and client secret into `QASC_GOOGLE_CLIENT_ID` and
    `QASC_GOOGLE_CLIENT_SECRET`.
 4. Set `QASC_ALLOWED_EMAIL_DOMAINS` to your work domains, comma-separated.
@@ -277,6 +282,7 @@ so the process exits instead of serving:
 | `QASC_AUTH_MODE=open` with `NODE_ENV=production` | Anyone could start an attempt under any address |
 | `NODE_ENV=production` with no `QASC_SESSION_SECRET` | A random one per deploy signs everyone out on every deploy |
 | `NODE_ENV=production` with no `QASC_OPTION_SECRET` | A random one per deploy invalidates every paper in flight |
+| `QASC_PUBLIC_URL` without a scheme, with a path, or plain http in production | Produces a redirect URI Google cannot match, and the failure would only appear when a person clicks "sign in" |
 
 `QASC_AUTH_MODE=open` keeps the old typed name and email. It is the default outside
 production, which is what makes local development and the test suite work without a Google

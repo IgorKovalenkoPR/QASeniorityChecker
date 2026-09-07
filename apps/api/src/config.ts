@@ -83,6 +83,59 @@ function sessionSecret(mode: 'google' | 'open'): string {
   return randomBytes(32).toString('hex');
 }
 
+/**
+ * The externally reachable origin, validated rather than trusted.
+ *
+ * This one is worth checking at startup because getting it wrong fails in the
+ * least helpful place possible: the process starts, every endpoint answers, and
+ * the mistake only surfaces when a human clicks "sign in" and Google shows them
+ * an error page. A value with no scheme produced
+ * "qaseniority-checker.onrender.com/api/auth/google/callback" as the redirect
+ * URI - not a URL at all, and Google compares it byte for byte.
+ *
+ * Normalised to a bare origin, so a trailing slash or a stray path cannot end
+ * up spliced into the callback URI either.
+ */
+function publicUrl(): string | null {
+  const raw = process.env.QASC_PUBLIC_URL?.trim();
+  if (!raw) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error(
+      `QASC_PUBLIC_URL must be an absolute URL including the scheme, e.g. ` +
+        `"https://example.onrender.com" - got "${raw}"`,
+    );
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error(
+      `QASC_PUBLIC_URL must start with https:// or http:// - got "${raw}"`,
+    );
+  }
+
+  const local = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+  if (parsed.protocol === 'http:' && !local && process.env.NODE_ENV === 'production') {
+    // The session cookie is Secure in production, so a browser would drop it on
+    // an http origin and the sign-in would appear to succeed and do nothing.
+    // Google also refuses non-https redirect URIs outside localhost.
+    throw new Error(
+      `QASC_PUBLIC_URL must use https:// in production - got "${raw}"`,
+    );
+  }
+
+  if (parsed.pathname !== '/' && parsed.pathname !== '') {
+    throw new Error(
+      `QASC_PUBLIC_URL must be an origin with no path - got "${raw}". ` +
+        `The callback path is appended to it.`,
+    );
+  }
+
+  return `${parsed.protocol}//${parsed.host}`;
+}
+
 const resolvedAuthMode = authMode();
 const resolvedDomains = list('QASC_ALLOWED_EMAIL_DOMAINS');
 
@@ -148,7 +201,7 @@ export const config = {
    * Behind Render's proxy the request's own host is right, so this is only
    * needed when that is not true.
    */
-  publicUrl: process.env.QASC_PUBLIC_URL ?? null,
+  publicUrl: publicUrl(),
 
   /** --- Google Spreadsheet export --- */
   /** The spreadsheet's id, the long string in its URL. */

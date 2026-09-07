@@ -353,3 +353,73 @@ describe('configuration refuses to start in a state that would leak the bank', (
     expect(dev.config.authMode).toBe('open');
   });
 });
+
+describe('QASC_PUBLIC_URL is validated, not trusted', () => {
+  // Getting this wrong fails in the least helpful place there is: the process
+  // starts, every endpoint answers, and the mistake only surfaces when a human
+  // clicks "sign in" and Google shows them an error page. It happened on the
+  // first real deploy - the value was set to a bare hostname, which produced
+  // "host/api/auth/google/callback" as the redirect URI. Not a URL at all.
+
+  it('refuses a value with no scheme', async () => {
+    setEnv({ ...GOOGLE_ENV, QASC_PUBLIC_URL: 'qasenioritychecker.onrender.com', NODE_ENV: 'test' });
+    vi.resetModules();
+    await expect(import('../src/config.js')).rejects.toThrow(
+      /QASC_PUBLIC_URL must be an absolute URL including the scheme/,
+    );
+  });
+
+  it('refuses a scheme that is not http or https', async () => {
+    setEnv({ ...GOOGLE_ENV, QASC_PUBLIC_URL: 'ftp://example.com', NODE_ENV: 'test' });
+    vi.resetModules();
+    await expect(import('../src/config.js')).rejects.toThrow(/https:\/\/ or http:\/\//);
+  });
+
+  it('refuses plain http in production, because a Secure cookie would be dropped', async () => {
+    setEnv({
+      ...GOOGLE_ENV,
+      QASC_PUBLIC_URL: 'http://check.example.com',
+      NODE_ENV: 'production',
+      QASC_OPTION_SECRET: 'o'.repeat(32),
+    });
+    vi.resetModules();
+    await expect(import('../src/config.js')).rejects.toThrow(/must use https:\/\/ in production/);
+  });
+
+  it('allows plain http on localhost, which is how it is developed', async () => {
+    setEnv({ ...GOOGLE_ENV, QASC_PUBLIC_URL: 'http://localhost:3000', NODE_ENV: 'test' });
+    vi.resetModules();
+    const { config } = await import('../src/config.js');
+    expect(config.publicUrl).toBe('http://localhost:3000');
+  });
+
+  it('refuses a value carrying a path, which would corrupt the callback URI', async () => {
+    setEnv({ ...GOOGLE_ENV, QASC_PUBLIC_URL: 'https://example.com/qasc', NODE_ENV: 'test' });
+    vi.resetModules();
+    await expect(import('../src/config.js')).rejects.toThrow(/an origin with no path/);
+  });
+
+  it('normalises a trailing slash away rather than splicing it into the URI', async () => {
+    setEnv({ ...GOOGLE_ENV, QASC_PUBLIC_URL: 'https://check.example.com/', NODE_ENV: 'test' });
+    vi.resetModules();
+    const { config } = await import('../src/config.js');
+    expect(config.publicUrl).toBe('https://check.example.com');
+  });
+
+  it('leaves the redirect URI correct once the value is an origin', async () => {
+    const { app } = await load();
+    const response = await app.inject({ method: 'GET', url: '/api/auth/google/start' });
+    const uri = new URL(response.headers.location as string).searchParams.get('redirect_uri');
+    // Parseable, https, and the exact string that has to be registered.
+    expect(() => new URL(uri as string)).not.toThrow();
+    expect(uri).toBe('https://check.example.com/api/auth/google/callback');
+    await app.close();
+  });
+
+  it('is optional: unset means derive it from the request', async () => {
+    setEnv({ ...GOOGLE_ENV, QASC_PUBLIC_URL: undefined, NODE_ENV: 'test' });
+    vi.resetModules();
+    const { config } = await import('../src/config.js');
+    expect(config.publicUrl).toBeNull();
+  });
+});
