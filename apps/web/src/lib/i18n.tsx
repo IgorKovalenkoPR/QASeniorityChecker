@@ -51,47 +51,49 @@ const S = {
   'app.name': { en: 'QA Seniority Checker', uk: 'QA Seniority Checker' },
   'app.tagline': {
     en: 'a self-check before your Performance Review',
-    uk: 'попередня оцінка перед Performance Review',
+    uk: 'самооцінка перед Performance Review',
   },
   'app.variant': { en: 'Paper {n}', uk: 'Варіант {n}' },
   'app.loading': { en: 'Loading…', uk: 'Завантаження…' },
   'app.footer': {
     en: 'The estimated level is a starting point for the Performance Review conversation, not the review itself.',
-    uk: 'Орієнтовний рівень - це відправна точка для розмови на Performance Review, а не сам review.',
+    uk: 'Орієнтовний рівень — це відправна точка для розмови на Performance Review, а не саме оцінювання.',
   },
   'lang.label': { en: 'Language', uk: 'Мова' },
 
   // --- sign in ---
   'signin.heading': { en: 'Check your seniority level', uk: 'Перевірте свій рівень сеньйорності' },
   'signin.intro': {
-    en: 'A short self-check that places you on the company Performance Review ladder. The result is a starting point for planning your review, not the review itself.',
-    uk: 'Коротка самооцінка, яка визначає, де ви зараз перебуваєте на щаблях Performance Review компанії. Результат є відправною точкою для планування вашого review, а не самим review.',
+    en: 'A short self-check that places you on the company Performance Review ladder. Treat the result as a starting point for that conversation, not as the review itself.',
+    uk: 'Коротка самооцінка, яка показує, на якому щаблі Performance Review ви зараз. Сприймайте результат як відправну точку для тієї розмови, а не як саме оцінювання.',
   },
   'signin.button': { en: 'Sign in with Google', uk: 'Увійти через Google' },
   'signin.domains': {
-    en: 'Work accounts only: {domains}. Your result will be attached to that address.',
-    uk: 'Доступ лише для робочих акаунтів {domains}. Ваш результат буде приєднаний до цієї адреси.',
+    en: 'Work accounts only: {domains}. Your result will be linked to that address.',
+    uk: 'Лише робочі акаунти: {domains}. Ваш результат буде привʼязаний до цієї адреси.',
   },
   'signin.domainsAny': {
-    en: 'Your result will be attached to the address you sign in with.',
-    uk: 'Ваш результат буде приєднаний до адреси, з якою ви увійдете.',
+    en: 'Your result will be linked to the address you sign in with.',
+    uk: 'Ваш результат буде привʼязаний до адреси, з якою ви увійдете.',
   },
   'signin.needTitle': { en: 'What you will need', uk: 'Що вам знадобиться' },
   'signin.need1': {
-    en: 'About {minutes} minutes without interruptions - the timer runs on the server and does not pause.',
-    uk: 'Приблизно {minutes} хвилин без переривань - таймер працює на сервері і не ставиться на паузу.',
+    en: 'About {minutes} minutes without interruptions – the timer runs on the server and does not pause.',
+    // `{minutes} хвилин` is only grammatical by luck: it is wrong at 22, 23 and 24.
+    // `хв` does not decline, so the sentence stays correct whatever the server says.
+    uk: 'Приблизно {minutes} хв без переривань — таймер працює на сервері і не ставиться на паузу.',
   },
   'signin.need2': {
-    en: 'One browser window in the foreground: switching away is recorded.',
-    uk: 'Одне вікно браузера на передньому плані: перемикання фіксуються.',
+    en: 'One browser window, kept in the foreground – switching away is recorded.',
+    uk: 'Одне вікно браузера на передньому плані — перемикання фіксуються.',
   },
   'signin.need3': {
-    en: 'A steady connection. A brief drop is fine, a long one ends the attempt.',
-    uk: 'Стабільний звʼязок. Короткий обрив не страшний, але тривалий завершить спробу.',
+    en: 'A steady connection. A brief drop costs nothing; a drop of several minutes ends the attempt.',
+    uk: 'Стабільний звʼязок. Короткий обрив не коштує нічого, а обрив на кілька хвилин завершує спробу.',
   },
   'signin.rulesLater': {
     en: 'You will see the full integrity rules on the next screen, before the timer starts.',
-    uk: 'Повні правила чесного проходження ви побачите на наступному екрані - до того, як запуститься таймер.',
+    uk: 'Повні правила чесного проходження ви побачите на наступному екрані — до того, як запуститься таймер.',
   },
   'signin.failed': { en: 'Sign-in failed.', uk: 'Вхід не вдався.' },
 
@@ -105,8 +107,10 @@ const S = {
     uk: 'Адреса цього акаунта не підтверджена в Google, тому пройти тест із неї не вийде.',
   },
   'auth.err.auth_state_mismatch': {
-    en: 'The sign-in lost track of its request - usually because the page sat open for a long time. Please try again.',
-    uk: 'Сеанс входу втратив звʼязок із запитом - найчастіше це буває, коли сторінка довго висіла відкритою. Спробуйте ще раз.',
+    en: 'The sign-in lost track of its request – usually because the page sat open for a long time. Please try again.',
+    // Not `висіла відкритою`: in software Ukrainian `висіти` means frozen, so the
+    // sentence claimed the page had crashed - a different and alarming statement.
+    uk: 'Сеанс входу втратив звʼязок із запитом — найчастіше це буває, коли сторінка довго була відкрита. Спробуйте ще раз.',
   },
   'auth.err.auth_missing_code': {
     en: 'Google did not return the sign-in details. Please try again.',
@@ -133,86 +137,124 @@ const S = {
   // --- start screen ---
   'start.heading': { en: 'Check your seniority level', uk: 'Перевірте свій рівень сеньйорності' },
   'start.intro': {
-    en: 'A short self-check that places you on the company Performance Review ladder. The result is a starting point for planning your review, not the review itself.',
-    uk: 'Коротка самооцінка, яка визначає, де ви зараз перебуваєте на щаблях Performance Review компанії. Результат є відправною точкою для планування вашого review, а не самим review.',
+    en: 'A short self-check that places you on the company Performance Review ladder. Treat the result as a starting point for that conversation, not as the review itself.',
+    uk: 'Коротка самооцінка, яка показує, на якому щаблі Performance Review ви зараз. Сприймайте результат як відправну точку для тієї розмови, а не як саме оцінювання.',
   },
   'start.stat.questions': { en: 'questions', uk: 'питань' },
   'start.stat.time': { en: 'time limit', uk: 'обмеження часу' },
   'start.stat.minutes': { en: '{n} min', uk: '{n} хв' },
 
-  'start.covers.title': { en: 'What the test covers', uk: 'Що охоплює тест' },
-  'start.covers.body': {
-    en: 'Theory and practice across the whole range of the role - from the fundamentals through to the judgement calls expected further up. Papers differ from person to person, but they are built to the same shape, so two people who got different papers are still measured on one scale.',
-    uk: 'Теорію і практику в усьому діапазоні ролі - від основ до рішень, яких очікують на вищих щаблях. Папери в різних людей різні, але побудовані за однією схемою, тож двоє, які отримали різні варіанти, все одно вимірюються за однією шкалою.',
-  },
-  'start.covers.noPrep': {
-    en: 'There is nothing to revise for. The point is to see where you are today, not what you managed to read last night.',
-    uk: 'Готуватися немає до чого. Сенс у тому, щоб побачити, де ви сьогодні, а не що встигли прочитати напередодні.',
+  // What the test covers is deliberately not stated. The card that used to say
+  // it withheld the syllabus while still sketching the shape of the paper, which
+  // is the worst of both: nothing a candidate can act on, and enough to read as
+  // a revision hint. The one sentence worth keeping says nothing about scope.
+  'start.noPrep': {
+    en: 'There is nothing to prepare for: the test shows where you are today.',
+    uk: 'Готуватися немає до чого: тест показує, де ви є сьогодні.',
   },
 
   'start.rules.title': { en: 'Integrity rules', uk: 'Правила чесного проходження' },
   'start.rules.bannerTitle': {
-    en: 'The attempt ends if you leave the test page.',
-    uk: 'Спроба завершується, якщо ви йдете зі сторінки тесту.',
+    // Not "ends": the first interruption is a warning, and a headline that
+    // overstates the rule is the fastest way to lose the reader's trust in the
+    // rest of the card.
+    en: 'Leaving the test page can end your attempt.',
+    uk: 'Вихід зі сторінки тесту може завершити спробу.',
   },
   'start.rules.bannerBody': {
-    en: 'Switching to another tab, window or application is recorded and reported to the server. A break shorter than {grace} seconds costs you a warning; after that each interruption counts, and the attempt ends on the {strikes}th. A single absence longer than {hard} seconds ends it immediately, and the result does not count.',
-    uk: 'Перехід на іншу вкладку, в інше вікно або в інший застосунок фіксується і передається на сервер. Коротке переривання до {grace} секунд коштує вам попередження; далі кожне переривання зараховується, і спроба завершується на {strikes}-му. Одна відсутність довша за {hard} секунд завершує спробу одразу, і результат не зараховується.',
+    en: 'Switching to another tab, window or application is recorded and reported to the server. An interruption shorter than {grace} seconds costs nothing at all. The first longer one is a warning, and the attempt ends after {strikes} of them. One absence of more than {hard} seconds ends the attempt on its own, whatever the count.',
+    // A declinable noun can never follow a placeholder here: `{grace} секунд` is
+    // wrong at 2 and `{strikes}-му` is wrong at 1. The invariant `с` and the
+    // colon-before-the-numeral keep the sentence correct at any value the
+    // server sends.
+    uk: 'Перехід на іншу вкладку, в інше вікно або в інший застосунок фіксується і передається на сервер. Коротке переривання (до {grace} с) не коштує нічого. Перше довше — це попередження; кількість таких переривань, після якої спроба завершується: {strikes}. Окрема відсутність понад {hard} с завершує спробу одразу, незалежно від їх кількості.',
   },
   'start.rules.foreground': {
-    en: 'Keep this window in the foreground for the whole test.',
-    uk: 'Тримайте це вікно активним протягом усього тесту.',
+    en: 'Keep this window in the foreground until you finish.',
+    uk: 'Тримайте це вікно активним, доки не завершите тест.',
   },
   'start.rules.closeTabs': {
-    en: 'Close other tabs and turn off notifications before you begin.',
-    uk: 'Закрийте інші вкладки і вимкніть сповіщення перед початком.',
+    // Says why. A notification stealing focus is the single most likely way an
+    // honest attempt spends an interruption, so naming it turns a bare rule
+    // into advice the candidate can act on before the timer starts.
+    en: 'Close other tabs and turn notifications off before you start – a notification that steals focus is the most common way an honest attempt picks up an interruption.',
+    uk: 'Закрийте інші вкладки і вимкніть сповіщення перед початком: саме сповіщення, яке перетягує на себе фокус, найчастіше стає причиною переривання.',
   },
   'start.rules.copyPaste': {
-    en: 'Right-click, copying and printing are disabled or recorded.',
-    uk: 'Правий клік, копіювання і друк вимкнені або фіксуються.',
+    // "Disabled or recorded" made the candidate guess which was which. The
+    // context menu and Ctrl+P really are prevented; copying and F12 really are
+    // only logged, and under the current weights none of them can end an
+    // attempt - which is the half that matters and used to be missing.
+    en: 'The right-click menu and the print shortcut are blocked. Copying and F12 are recorded in the report for your manager, but none of these ends the attempt by itself.',
+    uk: 'Контекстне меню і комбінація друку заблоковані. Копіювання і F12 записуються у звіт для керівника, але жодна з цих дій сама собою спробу не завершує.',
   },
   'start.rules.reload': {
-    en: 'The timer runs on the server, so reloading the page does not reset it. A reload does not end the attempt, but it is recorded and counts as one interruption, so there is no reason to do it.',
-    uk: 'Таймер працює на сервері, тож перезавантаження сторінки його не скидає. Саме перезавантаження спробу не завершує, але фіксується і зараховується як одне переривання, тому не варто робити це без потреби.',
+    // A reload is now half the budget, so "no reason to do it" is too soft: the
+    // sentence has to name the one legitimate case and close the rest.
+    en: 'The timer runs on the server, so reloading does not reset it and does not end the attempt. It does count as one interruption, though, so reload only if something is broken.',
+    uk: 'Таймер працює на сервері, тож перезавантаження сторінки його не скидає і спробу не завершує. Але воно зараховується як одне переривання, тому перезавантажуйте лише тоді, коли щось справді зламалося.',
   },
   'start.rules.network': {
-    en: 'A short connection drop does not end the attempt: the server waits several minutes for you.',
-    uk: 'Короткий обрив зʼєднання спробу не завершує: сервер чекає на вас кілька хвилин.',
+    en: 'A short connection drop costs nothing: the server waits several minutes for you before it gives up.',
+    uk: 'Короткий обрив зʼєднання не коштує нічого: сервер чекає на вас кілька хвилин, перш ніж завершити спробу.',
   },
   'start.rules.answers': {
-    en: 'Each answer is sent to the server as soon as you pick it. If the connection goes down, sending is retried automatically until it succeeds - you will see a warning while that happens, and you will not lose an answer or have to pick it again.',
-    uk: 'Кожна відповідь надсилається на сервер одразу після вибору. Якщо звʼязок пропаде, надсилання повторюється автоматично, доки не вдасться - ви побачите про це попередження, і втрачати чи вибирати відповідь заново не доведеться.',
+    // Not "warning": in this same card that word means "one interruption from
+    // termination". Using it for a benign retry notice teaches the candidate to
+    // panic at the wrong banner.
+    en: 'Each answer reaches the server the moment you pick it. If the connection drops, sending is retried automatically until it succeeds – you will see a notice while that happens, and nothing you have already answered is lost.',
+    uk: 'Кожна відповідь надсилається на сервер одразу після вибору. Якщо звʼязок пропаде, надсилання автоматично повторюється, доки не вдасться: ви побачите про це повідомлення, і жодна вже надана відповідь не пропаде.',
+  },
+
+  'start.rules.duplicateTab': {
+    en: 'Opening the same attempt in a second tab or window counts as an interruption too. Work in one tab.',
+    uk: 'Відкриття тієї самої спроби в другій вкладці або в другому вікні теж зараховується як переривання. Працюйте в одній вкладці.',
+  },
+  // Said BEFORE the attempt, not only after it ends. The server already stores
+  // every event with its duration and supports reinstatement, so this is a
+  // promise the tool can keep - and it is what turns the card from a threat
+  // into a process with a remedy. With a budget of two it is load-bearing.
+  'start.rules.appeal': {
+    en: 'If an attempt ends by accident, it can be looked at again. Every event is stored with its time and its duration, and your manager or QA lead can reinstate the attempt.',
+    uk: 'Якщо спроба завершилася випадково, це можна переглянути. Кожна подія збережена з часом і тривалістю, а керівник або QA-лід може відновити спробу.',
   },
 
   'start.form.title': { en: 'Start the test', uk: 'Почати тест' },
-  'start.form.signedInAs': { en: 'Signed in as', uk: 'Ви входите як' },
+  // Past tense: the sign-in has already happened by the time this label shows.
+  'start.form.signedInAs': { en: 'Signed in as', uk: 'Ви увійшли як' },
   'start.form.identityFixed': {
-    en: '{email} - your result will be attached to this address. It cannot be changed here: Google has verified it.',
-    uk: '{email} - результат приєднається до цієї адреси. Змінити її тут не можна: вона підтверджена входом через Google.',
+    en: '{email} – your result will be linked to this address. It cannot be changed here: Google has verified it.',
+    uk: '{email} — результат буде привʼязаний до цієї адреси. Змінити її тут не можна: вона підтверджена входом через Google.',
   },
   'start.form.name': { en: 'Full name', uk: 'Повне імʼя' },
   'start.form.nameError': { en: 'Please enter your name.', uk: 'Будь ласка, введіть своє імʼя.' },
   'start.form.email': { en: 'Work email', uk: 'Робоча пошта' },
   'start.form.emailHint': {
-    en: 'Used to attach the result to your Performance Review record.',
-    uk: 'Використовується, щоб приєднати результат до вашого запису Performance Review.',
+    en: 'Used to link the result to your Performance Review record.',
+    uk: 'Використовується, щоб привʼязати результат до вашого запису Performance Review.',
   },
   'start.form.emailError': {
     en: 'Please enter a valid email address.',
     uk: 'Будь ласка, введіть коректну адресу пошти.',
   },
   'start.form.accept': {
-    en: 'I have read the integrity rules and understand that leaving this page ends my attempt.',
-    uk: 'Я прочитав правила чесного проходження і розумію, що вихід із цієї сторінки завершує мою спробу.',
+    // Two fixes, both in the one sentence the candidate personally attests to.
+    // `ends` -> `can end`, because affirming a rule stricter than the one
+    // actually enforced is the ground a terminated candidate would stand on to
+    // say the tool lied. And `Я прочитав` is masculine: the impersonal form
+    // reads naturally and does not put every woman taking the test in the
+    // wrong gender at the moment she is asked to affirm something.
+    en: 'I have read the integrity rules and understand that leaving the test page can end my attempt.',
+    uk: 'Правила чесного проходження прочитані. Я розумію, що вихід зі сторінки тесту може завершити мою спробу.',
   },
   'start.form.submit': { en: 'Start the test', uk: 'Почати тест' },
-  'start.form.starting': { en: 'Starting…', uk: 'Починаємо...' },
+  'start.form.starting': { en: 'Starting…', uk: 'Починаємо…' },
   'start.error': { en: 'Could not start the test.', uk: 'Не вдалося почати тест.' },
 
   // --- test screen ---
   'test.progress': { en: 'Question {i} / {n}', uk: 'Питання {i} / {n}' },
-  'test.saving': { en: 'Saving…', uk: 'Зберігаємо...' },
-  'test.unsaved': { en: 'Not saved - retrying', uk: 'Не збережено - повторюємо' },
+  'test.saving': { en: 'Saving…', uk: 'Зберігаємо…' },
+  'test.unsaved': { en: 'Not saved – retrying', uk: 'Не збережено — повторюємо' },
   'test.answered': { en: 'Answered: {answered} of {total}', uk: 'Відповіді: {answered} з {total}' },
   'test.answeredAria': { en: 'Answers given', uk: 'Відповіді надано' },
   'test.retryTitle': {
@@ -220,13 +262,20 @@ const S = {
     uk: 'Звʼязок із сервером нестабільний.',
   },
   'test.retryBody': {
-    en: 'Your latest answers have not been saved yet and we are retrying. This does not end the attempt, and the timer runs on the server. Do not close the page - as soon as the connection is back, the answers will arrive on their own.',
-    uk: 'Останні відповіді ще не збереглися, і ми повторюємо спроби надіслати їх. Спробу це не завершує, а таймер іде на сервері. Не закривайте сторінку - щойно звʼязок відновиться, відповіді дійдуть самі.',
+    en: 'Your latest answers have not been saved yet and we are retrying. This does not end the attempt, and the timer runs on the server. Do not close the page – as soon as the connection is back, the answers will arrive on their own.',
+    // `повторюємо спроби надіслати` put two senses of `спроба` three words
+    // apart: retrying a send, and the exam attempt itself.
+    uk: 'Останні відповіді ще не збереглися, і ми надсилаємо їх повторно. Спробу це не завершує, а таймер іде на сервері. Не закривайте сторінку — щойно звʼязок відновиться, відповіді дійдуть самі.',
   },
-  'test.warnTitle': { en: 'Integrity warning', uk: 'Попередження про порушення' },
+  // `Попередження про порушення` accused the candidate of misconduct, in bold,
+  // mid-exam, for something their operating system did. The banner fires when
+  // focus was lost for three seconds; it states the fact and assigns no blame.
+  'test.warnTitle': { en: 'Interruption recorded', uk: 'Зафіксовано переривання' },
   'test.warnRemaining': {
-    en: 'Warnings left before the attempt ends: {n}.',
-    uk: 'Залишилося попереджень до завершення спроби: {n}.',
+    // They are interruptions, not warnings - only the first one is a warning,
+    // and at a budget of two this line usually reads "1".
+    en: 'Interruptions left before the attempt ends: {n}.',
+    uk: 'Залишилося переривань до завершення спроби: {n}.',
   },
   'test.multi': { en: 'Select every correct option', uk: 'Оберіть усі правильні варіанти' },
   'test.back': { en: 'Back', uk: 'Назад' },
@@ -248,7 +297,7 @@ const S = {
     uk: 'Без відповіді лишилося {unanswered} з {total} питань. Вони будуть зараховані як неправильні.',
   },
   'test.keepGoing': { en: 'Keep going', uk: 'Продовжити' },
-  'test.submitting': { en: 'Submitting…', uk: 'Надсилаємо...' },
+  'test.submitting': { en: 'Submitting…', uk: 'Надсилаємо…' },
   'test.confirmFinish': { en: 'Finish', uk: 'Завершити' },
   'test.timeLeft': { en: 'Time left', uk: 'Залишилось часу' },
 
@@ -270,8 +319,8 @@ const S = {
   },
   'result.byTier': { en: 'Result by level', uk: 'Результат за рівнями' },
   'result.byTierNote': {
-    en: 'The rung is decided by these four numbers against the thresholds in the Performance Review sheet. A level only counts once the ones below it are solid - which is why a strong result higher up does not make up for a weak one lower down.',
-    uk: 'Щабель визначається саме цими чотирма числами за порогами з таблиці Performance Review. Рівень має вагу лише тоді, коли рівні під ним міцні - тому сильний результат вище не компенсує слабкий нижче.',
+    en: 'The rung is decided by these four numbers against the thresholds in the Performance Review sheet. A level only counts once the ones below it are solid – which is why a strong result higher up does not make up for a weak one lower down.',
+    uk: 'Щабель визначається саме цими чотирма числами за порогами з таблиці Performance Review. Рівень має вагу лише тоді, коли рівні під ним міцні — тому сильний результат вище не компенсує слабкий нижче.',
   },
   'result.tierAria': { en: 'Level {tier}: {percent} percent', uk: 'Рівень {tier}: {percent} відсотків' },
   'result.ladderTitle': { en: 'Where this level sits', uk: 'Де розташований цей рівень' },
@@ -282,7 +331,7 @@ const S = {
   'result.yourResult': { en: 'Your result', uk: 'Ваш результат' },
   'result.compsTitle': {
     en: 'Competencies worth looking at first',
-    uk: 'Компетенції, на які варто глянути першими',
+    uk: 'Компетенції, на які варто звернути увагу насамперед',
   },
   'result.compsNote': {
     en: 'Taken from the Performance Review rows your paper actually touched. Twenty questions cannot cover every row, so treat this as a topic for the conversation rather than a verdict.',
@@ -319,25 +368,34 @@ const S = {
     uk: 'Цю спробу завершено за правилами чесного проходження тесту.',
   },
   'term.body': {
-    en: 'The attempt was not scored. If you believe this is a mistake - a system notification, a dropped connection - talk to your manager or QA lead: every event is recorded with a timestamp and a duration, so the record can be reviewed.',
-    uk: 'Спробу не оцінено. Якщо ви вважаєте, що це помилка - системне сповіщення, обрив зʼєднання - зверніться до керівника або QA-ліда: кожна подія записана з міткою і тривалістю, тож запис можна переглянути.',
+    // Names reinstatement, matching the promise `start.rules.appeal` makes
+    // before the attempt. "Someone will look at it" and "this can be undone"
+    // are different sentences, and only the second one is true here.
+    en: 'The attempt was not scored. If you believe this is a mistake – a system notification, a dropped connection – talk to your manager or QA lead: every event is recorded with its time and its duration, so the record can be reviewed and the attempt reinstated.',
+    uk: 'Спробу не оцінено. Якщо ви вважаєте, що це помилка — системне сповіщення, обрив зʼєднання — зверніться до керівника або QA-ліда: кожна подія записана з часом і тривалістю, тож запис можна переглянути, а спробу відновити.',
   },
   'term.back': { en: 'Back to the start', uk: 'Повернутися на початок' },
 
   // --- proctor / runtime messages ---
   'proctor.leftPage': {
-    en: 'You left the test page. The attempt will end if this keeps happening.',
-    uk: 'Ви залишили сторінку тесту. Спроба завершиться, якщо це повторюватиметься.',
+    // Fires on the way out, before the duration is known, so it must not
+    // promise anything about cost. `keeps happening` implied a runway that a
+    // budget of two does not have.
+    en: 'You left the test page. That is recorded, and another interruption can end the attempt.',
+    uk: 'Ви залишили сторінку тесту. Це зафіксовано, і наступне переривання може завершити спробу.',
   },
   'proctor.navAway': {
-    en: 'Leaving the test page has been recorded.',
-    uk: 'Вихід зі сторінки тесту зафіксовано.',
+    // Shown for any verdict with strikes, including a second tab and a reload,
+    // so it cannot name page-leaving specifically: a candidate who opened a
+    // second tab would go hunting for a page-leave that never happened.
+    en: 'The interruption has been recorded.',
+    uk: 'Переривання зафіксовано.',
   },
-  'err.attemptGone': { en: 'The attempt no longer exists.', uk: 'Спроби вже немає.' },
+  'err.attemptGone': { en: 'This attempt no longer exists.', uk: 'Ця спроба більше не існує.' },
   'err.submit': { en: 'Could not finish the attempt.', uk: 'Не вдалося завершити спробу.' },
   'err.unsavedOnSubmit': {
-    en: 'Your latest answers have not been saved yet - the connection is unstable. Do not close the page: as soon as it is back, press Finish again.',
-    uk: 'Останні відповіді ще не збереглися - зʼєднання нестабільне. Не закривайте сторінку: щойно звʼязок відновиться, натисніть «Завершити» ще раз.',
+    en: 'Your latest answers have not been saved yet – the connection is unstable. Do not close the page: as soon as it is back, press Finish again.',
+    uk: 'Останні відповіді ще не збереглися — зʼєднання нестабільне. Не закривайте сторінку: щойно звʼязок відновиться, натисніть «Завершити» ще раз.',
   },
 
   // --- sources shown on the result review ---
@@ -350,6 +408,17 @@ const S = {
 } as const satisfies Record<string, Entry>;
 
 export type StringKey = keyof typeof S;
+
+/**
+ * Every key in the dictionary.
+ *
+ * Exported so the test suite can walk the real table instead of a hand-copied
+ * list of key names. The list version silently stopped covering any key added
+ * after it was written, which is precisely the moment the checks matter - a new
+ * string is the one most likely to be missing a language or a placeholder.
+ * The table itself stays private: only the names leave this module.
+ */
+export const STRING_KEYS = Object.keys(S) as StringKey[];
 
 /** `{name}` placeholders, replaced positionally by name. Missing ones stay put. */
 function interpolate(template: string, vars?: Record<string, string | number>): string {

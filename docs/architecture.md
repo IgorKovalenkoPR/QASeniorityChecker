@@ -354,6 +354,14 @@ quota, and not which syllabi the questions come from. All of that reads as a
 revision plan, and the test is meant to measure where someone is rather than
 what they read the night before.
 
+A card headed *What the test covers* used to sit there and is gone. It withheld
+the syllabus list while still sketching the shape of the paper — "theory and
+practice across the whole range of the role" — which is the worst of both: a
+candidate could act on none of it, and it still read as a hint about what to
+revise. The one sentence worth keeping, that there is nothing to prepare for,
+now sits under the two facts in the hero, where it reassures without describing
+anything.
+
 ---
 
 ## 9. Integrity subsystem
@@ -369,46 +377,126 @@ That principle was learned the hard way. An earlier policy failed an honest
 candidate along three paths, and the start screen told them the opposite was
 true.
 
+On top of it sits a second rule, added when the budget was tightened to two:
+
+> A strike may only be charged for an action the candidate took on purpose and
+> can perceive themselves taking.
+
+This is what makes a two-interruption budget defensible. It came from the
+owner's report that termination felt *random*, and the complaint was correct.
+The old budget of four was drawn on by a stray F12, a print shortcut, a
+two-minute wifi drop and a reload as well as by a tab switch, so two candidates
+who behaved identically could get different verdicts and neither could tell why.
+Halving the budget while leaving that in place would have made luck the deciding
+factor roughly half the time. So the two changes are one change: the count is
+tighter, and everything that is a guess about intent or an event the candidate
+cannot see was taken out of the count altogether.
+
 ### 9.2 As-built policy (`DEFAULT_INTEGRITY_POLICY`)
 
 | | |
 | --- | --- |
-| Strikes that end the attempt | 4 |
-| Blur shorter than this is free | 2 s |
+| Interruptions that end the attempt | 2 |
+| An interruption shorter than this is free | 2 s |
 | A single absence this long ends it outright | 30 s |
-| Server-observed silence below this costs nothing | 2 min |
 | Server-observed silence this long ends it | 5 min |
 
-Weights: `visibility_hidden` 1, `window_blur` 1, `fullscreen_exit` 1,
-`print_attempt` 1, `devtools_suspected` 1, `navigation_away` 1,
-`heartbeat_gap` 1, `duplicate_session` 2. `copy_attempt`, `paste_attempt` and
-`context_menu` are recorded and cost nothing — an honest candidate highlights
-text while reading.
+There used to be a fifth threshold, `heartbeatStrikeMs`, which charged one
+strike for silence between two and five minutes. It is gone rather than retuned:
+at a budget of two it could only do harm, and it was the clearest violation of
+§9.1's second rule.
 
-Three specifics worth the words:
+The budget is spent by three things, and only three — each of them deliberate
+and visible to the person doing it:
 
-**A reload costs one strike, not the attempt.** `pagehide` fires on F5, on the
-back button and on browser crash recovery exactly as it does on a deliberate
+| Weight 1 | |
+| --- | --- |
+| `visibility_hidden`, `window_blur` | leaving the page for longer than the grace window |
+| `navigation_away` | closing or navigating away, which includes a reload |
+| `duplicate_session` | opening the same attempt in a second tab or browser |
+
+Two facts end an attempt on their own **without** touching the count: one
+absence of 30 s or more, and server-observed silence of 5 minutes or more.
+`strikeCost` checks those before it reads the weight table, which is what lets
+an event be fatal while costing nothing towards the ordinary count — so "how
+many interruptions do I have left" has one answer and does not quietly mean
+something else.
+
+Everything else is recorded for the reviewer and charged nothing:
+`copy_attempt`, `paste_attempt`, `context_menu`, `print_attempt`,
+`devtools_suspected`, shorter silences, and `fullscreen_exit` (which nothing
+emits — the attempt never requests fullscreen).
+
+Four specifics worth the words:
+
+**A reload costs one interruption, not the attempt.** `pagehide` fires on F5, on
+the back button and on browser crash recovery exactly as it does on a deliberate
 exit, and the client cannot tell them apart at the moment it has to report. The
 start screen tells the candidate the server-side timer survives a reload, so
 ending the attempt on the first `pagehide` failed people for an action they had
-been told was allowed.
+been told was allowed. At a budget of two, though, a reload is now half of it,
+and the start screen says so in as many words rather than "there is no reason to
+do it".
 
-**Server-observed silence has its own scale.** A heartbeat gap is recorded as
+**Server-observed silence never costs a strike.** A heartbeat gap is recorded as
 `heartbeat_gap`, not as a hidden tab. Filing it as `visibility_hidden` carrying
 the whole gap as its duration meant every gap past the grace window was
 automatically past the hard-terminate threshold — three missed pings ended a
-test. Silence is the one signal the candidate cannot see happening and cannot
-argue with, so it is scored gently.
+test. It is now scored on one rule with nothing in between: five minutes of
+silence is final, and anything less is free. Nobody reported it, the candidate
+cannot see it happening, and the same sixty seconds is produced by a cheating
+candidate and by a reconnecting VPN.
 
-**Four ordinary focus losses, not two.** Two in half an hour is a working day: a
-Teams popup, a glance at the clock, a screen lock.
+**Guesses about intent are not evidence.** F12 does not prove devtools opened
+(the keypress is all the browser will tell us), Ctrl+P is prevented before it
+prints, and highlighting a question is what reading looks like. Under the old
+weights a stray keypress was worth a quarter of an attempt; under a budget of
+two it would have been half.
+
+**A second tab costs one interruption, not two.** It used to be double-weighted,
+which at a budget of two would have made the first detection final — and the
+`BroadcastChannel` handshake that detects it can misfire, so instant termination
+on a single detection is more confidence than the mechanism has earned.
 
 ### 9.3 Client and server
 
 `packages/core/src/integrity.ts` is shared. The client uses it to render the
 right warning immediately; the server uses it to decide. **The client's verdict
 is advisory; only the server's is binding.**
+
+**The client reports episodes, never raw browser events.** This is the other
+half of the fix for "it feels random", and it lives in
+`apps/web/src/lib/proctor.ts`. The browser does not emit one event per human
+action: a single tab switch fires `blur` *and* `visibilitychange` in an
+engine-specific order, coming back fires `focus` and `visibilitychange` in
+either order, and alt-tab, native dialogs and monitor switches emit
+blur/focus/blur clusters milliseconds apart. Reported raw, the identical action
+cost one candidate one strike and another two.
+
+So an *absence episode* opens on the first signal, absorbs every further signal,
+and closes only once the document has been visible again for one uninterrupted
+second. It reports one event, whose duration is the time actually spent away
+(time briefly back is excluded) and whose type is decided by what was true
+during the episode — `visibility_hidden` if the document was ever hidden,
+`window_blur` if it only lost focus — rather than by whichever return event won
+the race. Three smaller holes closed with it: an episode still open at
+`pagehide` is now reported instead of being dropped (so switching tab and then
+closing the tab used to lose the *longest* absences), an attempt that starts
+while the document is already hidden opens an episode immediately (no
+`visibilitychange` will fire until the candidate comes back), and the
+duplicate-tab handshake now counts each peer page once by id and stops answering
+on a real unload, so a reload no longer lets the outgoing page report a second
+session against its own replacement. `apps/web/test/proctor.test.ts` pins all of
+this against a hand-built DOM, in both event orders.
+
+**The reason is bilingual, and stored in one language.** `IntegrityVerdict.reason`
+is a `LocalizedText`, composed once in `integrity.ts`, so the candidate reads
+the cause in their own language at the moment the attempt ends. The
+`attempts.termination_reason` column stores the English side only: it is the
+reviewer's record and the source of the spreadsheet cell. A candidate who
+reloads a terminated attempt therefore sees the general localised sentence
+rather than the specific cause — the trade for not adding a code column and a
+migration, and the specific cause was on screen when it happened.
 
 `applyIntegrityVerdict` replays the *whole* stored event log on every report
 rather than incrementing a counter. A retried beacon, a duplicated request or an
@@ -600,25 +688,36 @@ candidate.
 
 ## 13. Tests
 
-`npm test` runs Vitest over 9 files. Node environment throughout; there is no
+`npm test` runs Vitest over 10 files. Node environment throughout; there is no
 jsdom, no `fast-check`, and no Playwright — the previous version of this document
-described all three, and none was ever adopted.
+described all three, and none was ever adopted. Where a test needs a DOM it
+builds the four objects it actually touches, which doubles as documentation of
+that surface.
 
 | File | Covers |
 | --- | --- |
 | `packages/core/test/scoring.test.ts` | tier folding, the ladder's three properties over every achievable score, gap text in both languages |
-| `packages/core/test/integrity.test.ts` | the strike policy, including the reload and silence cases as named regressions |
+| `packages/core/test/integrity.test.ts` | the strike policy, including the reload and silence cases as named regressions, and the invariant that a zero-weight event can never end an attempt |
 | `packages/content/test/bank.test.ts` | bank structure, quota, paper spread, translation completeness |
 | `apps/api/test/api.test.ts` | the candidate lifecycle end to end over a real Fastify and in-memory SQLite, the answer-key gating, the integrity paths, the reviewer endpoints, reinstatement, malformed requests |
 | `apps/api/test/auth.test.ts` | who is admitted, the OAuth flow with an injected exchange, the state check, the config guards |
 | `apps/api/test/sheets.test.ts` | the row shape, the outbox state machine, queue-before-credentials |
 | `apps/api/test/migrate.test.ts` | opening a database written by an older build |
 | `apps/web/test/answerQueue.test.ts` | the retry policy, latest-wins, flush deadlines |
-| `apps/web/test/i18n.test.ts` | the dictionary: no empties, no Cyrillic on the English side, matching placeholders |
+| `apps/web/test/proctor.test.ts` | one action = one reported event in both event orders, episode coalescing, the `pagehide` and already-hidden paths, the duplicate-tab handshake |
+| `apps/web/test/i18n.test.ts` | the dictionary — no empties, no Cyrillic on the English side, matching placeholders — walked from the exported key list rather than a hand-copied one, which had stopped covering keys added after it was written |
 
 Beyond the suite, three checks run separately and belong in CI:
 `npm run typecheck`, `npm run check:bundle` (needs a build first) and
 `npm run export:variants` with a diff.
+
+One CI-specific trap, since it has already cost a red build: **the runner is on a
+much newer Node than the development machine** (24 against 20.4 at the time of
+writing), and the globals differ. `navigator` does not exist at all on Node 20
+and is a getter-only accessor on Node 24, so a test that assigns to it passes
+locally and throws in CI — modules are strict mode, where writing to an accessor
+without a setter is an error rather than a silent no-op. Anything that stands a
+global in for a browser object has to use `Object.defineProperty`.
 
 What is **not** covered automatically: anything requiring a real browser, a real
 Google account, or a real Docker daemon. Those were exercised by hand — the
@@ -689,6 +788,17 @@ risks as handled on the strength of some of them.
 4. **Five dev-dependency advisories** (vite/vitest) remain; clearing them needs
    `vitest@5`, a major bump. They are pruned from the runtime image and
    `npm audit --omit=dev` is clean.
-5. **Attempt tokens reach the container log** through the beacon query string
+5. **Two interruptions is a judgement call nobody has field-tested.** §9.1's
+   second rule makes it defensible in principle, and the reinstatement path
+   (§9.4) is the remedy when it is wrong — but that remedy is now load-bearing
+   rather than a nicety, and it only works if a reviewer is actually willing to
+   press it. The first pilot should count how often it gets pressed.
+6. **Ukrainian has no plural forms in the dictionary.** Counts are interpolated
+   into strings that read correctly at some values and not others
+   (`{n} питань` is right at 20 and wrong at 21). The rules copy avoids the trap
+   by putting the numeral where no declined noun follows it, but five other
+   strings still have it, and fixing them properly means a plural rule rather
+   than a rewording.
+7. **Attempt tokens reach the container log** through the beacon query string
    (§9.3).
-6. **No graceful shutdown** (§14).
+8. **No graceful shutdown** (§14).

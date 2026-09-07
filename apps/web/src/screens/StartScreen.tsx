@@ -5,18 +5,22 @@ import { useI18n } from '../lib/i18n.js';
 import { Banner, Card } from '../components/ui.js';
 
 /**
- * Стартовий екран.
+ * Start screen.
  *
- * Правила чесності показані повністю ДО того, як запуститься таймер, і їх треба
- * підтвердити. Це не формальність: правило проктарингу, про яке кандидат
- * дізнається лише порушивши його, несправедливе, а спроба, завершена за
- * правилом, якого ніхто не пояснив, непридатна для розмови на Performance
- * Review.
+ * The integrity rules are shown in full BEFORE the timer starts, and have to be
+ * accepted. That is not a formality: a proctoring rule a candidate only learns
+ * by breaking it is unfair, and an attempt ended by a rule nobody explained is
+ * useless as input to a Performance Review conversation. Every number in the
+ * rules comes from the server's own policy, so the screen cannot promise a
+ * threshold the server does not enforce.
  *
- * Що цей екран НЕ показує, і теж свідомо: скільки питань у банку, скільки є
- * варіантів, як папір розкладений по щаблях і з яких силабусів узятий. Усе це
- * читається як інструкція, до чого готуватися, а тест міряє не те, що людина
- * встигла прочитати напередодні.
+ * What this screen deliberately does NOT show: how many questions are in the
+ * bank, how many papers exist, how a paper is distributed across the rungs, or
+ * which syllabi it is drawn from. All of it reads as instructions on what to
+ * revise, and the test measures where somebody is rather than what they managed
+ * to read the night before. The card that used to gesture at the scope without
+ * actually stating it was the worst of both and is gone; the one sentence worth
+ * keeping - that there is nothing to prepare for - now sits in the hero.
  */
 export function StartScreen({
   meta,
@@ -56,7 +60,7 @@ export function StartScreen({
   const minutes = meta ? Math.round(meta.durationSeconds / 60) : 30;
   const graceSec = meta ? Math.round(meta.integrity.graceMs / 1000) : 2;
   const hardSec = meta ? Math.round(meta.integrity.hardTerminateMs / 1000) : 30;
-  const strikes = meta ? meta.integrity.strikesAllowed : 4;
+  const strikes = meta ? meta.integrity.strikesAllowed : 2;
 
   return (
     <div className="stack">
@@ -72,35 +76,27 @@ export function StartScreen({
           />
           <Fact value={t('start.stat.minutes', { n: minutes })} label={t('start.stat.time')} />
         </div>
+        <p className="muted small" style={{ marginTop: 'var(--sp-5)' }}>
+          {t('start.noPrep')}
+        </p>
       </Card>
 
-      <div className="stack" style={{ gap: 'var(--sp-5)' }}>
-        <Card>
-          <h2 className="card__title">{t('start.covers.title')}</h2>
-          <p className="muted small">{t('start.covers.body')}</p>
-          <p className="muted small" style={{ marginTop: 'var(--sp-3)' }}>
-            {t('start.covers.noPrep')}
-          </p>
-        </Card>
-
-        <Card>
-          <h2 className="card__title">{t('start.rules.title')}</h2>
-          <Banner tone="warning" title={t('start.rules.bannerTitle')}>
-            {t('start.rules.bannerBody', { grace: graceSec, strikes, hard: hardSec })}
-          </Banner>
-          <ul
-            className="small muted"
-            style={{ marginTop: 'var(--sp-4)', paddingLeft: 'var(--sp-5)' }}
-          >
-            <li>{t('start.rules.foreground')}</li>
-            <li>{t('start.rules.closeTabs')}</li>
-            <li>{t('start.rules.copyPaste')}</li>
-            <li>{t('start.rules.reload')}</li>
-            <li>{t('start.rules.network')}</li>
-            <li>{t('start.rules.answers')}</li>
-          </ul>
-        </Card>
-      </div>
+      <Card>
+        <h2 className="card__title">{t('start.rules.title')}</h2>
+        <Banner tone="warning" title={t('start.rules.bannerTitle')}>
+          {t('start.rules.bannerBody', { grace: graceSec, strikes, hard: hardSec })}
+        </Banner>
+        <ul className="small muted" style={{ marginTop: 'var(--sp-4)', paddingLeft: 'var(--sp-5)' }}>
+          <li>{t('start.rules.foreground')}</li>
+          <li>{t('start.rules.closeTabs')}</li>
+          <li>{t('start.rules.copyPaste')}</li>
+          <li>{t('start.rules.reload')}</li>
+          <li>{t('start.rules.duplicateTab')}</li>
+          <li>{t('start.rules.network')}</li>
+          <li>{t('start.rules.answers')}</li>
+          <li>{t('start.rules.appeal')}</li>
+        </ul>
+      </Card>
 
       <Card>
         <h2 className="card__title">{t('start.form.title')}</h2>

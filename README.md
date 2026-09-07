@@ -83,23 +83,35 @@ exactly that.
 
 > **The attempt ends when the candidate leaves the page.**
 
-This is implemented as a strike system rather than a hair trigger, because a browser fires the same
-events for an OS notification, a password-manager popup and an incoming call as it does for a
-candidate opening a second tab. Terminating an honest attempt is a worse failure than letting one
+This is implemented as a count of interruptions rather than a hair trigger, because a browser fires
+the same events for an OS notification, a password-manager popup and an incoming call as it does for
+a candidate opening a second tab. Terminating an honest attempt is a worse failure than letting one
 borderline blur through.
 
-| Signal | Detected by | Default cost |
-| --- | --- | --- |
-| Tab switch, minimise, mobile app switch | `visibilitychange` | 1 strike (0 if under 2 s) |
-| Focus lost to another window | `blur` / `focus` | 1 strike (0 if under 2 s) |
-| Any absence longer than 10 s | measured duration | terminates immediately |
-| Tab closed, navigated away | `pagehide` + `sendBeacon` | terminates immediately |
-| Same attempt open in a second tab | `BroadcastChannel` | terminates immediately |
-| Client stops sending heartbeats | **server-side gap detection** | 1 strike, scaled by gap length |
-| Copy, paste, right-click | DOM events | recorded, 0 cost |
-| Devtools shortcuts | key handler | recorded, low cost |
+**Two interruptions end the attempt**, and only three things can be one — each of them deliberate,
+and visible to the person doing it:
 
-Two strikes end the attempt. A terminated attempt is **never scored**.
+| Signal | Detected by | Cost |
+| --- | --- | --- |
+| Tab switch, minimise, another window, mobile app switch | one coalesced episode from `visibilitychange` + `blur`/`focus` | 1 interruption (free under 2 s) |
+| Tab closed, navigated away, reloaded | `pagehide` + `sendBeacon` | 1 interruption |
+| Same attempt open in a second tab | `BroadcastChannel` handshake | 1 interruption |
+
+Two facts end an attempt on their own, without touching that count:
+
+| Signal | Detected by | Cost |
+| --- | --- | --- |
+| One absence of 30 s or more | measured duration | terminates |
+| Five minutes of server-observed silence | **server-side gap detection** | terminates |
+
+Everything else is recorded for the reviewer and costs nothing at all: copy, paste, right-click,
+print and devtools shortcuts, and any silence shorter than five minutes. The rule behind that split
+is that **a strike may only be charged for an action the candidate took on purpose and can perceive
+themselves taking** — a keypress that might mean devtools is a guess about intent, and a wifi drop
+is not an action. With a budget of two, anything else deciding the outcome would make it a lottery.
+
+A terminated attempt is **never scored** — and can be reinstated by a reviewer, with the whole event
+log kept for them to read.
 
 ### Why the server decides
 

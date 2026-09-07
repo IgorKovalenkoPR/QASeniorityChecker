@@ -242,7 +242,10 @@ export function applyIntegrityVerdict(db: Db, attempt: AttemptRow) {
       `UPDATE attempts
           SET status = 'terminated', finished_at = ?, strikes = ?, termination_reason = ?
         WHERE id = ?`,
-    ).run(Date.now(), verdict.strikes, verdict.reason, attempt.id);
+      // The English side only. This column is the reviewer's record - it is
+      // what the spreadsheet export reads - and SQLite cannot hold the pair.
+      // The candidate is shown the localised sentence from the verdict itself.
+    ).run(Date.now(), verdict.strikes, verdict.reason?.en ?? null, attempt.id);
   } else {
     db.prepare('UPDATE attempts SET strikes = ? WHERE id = ?').run(verdict.strikes, attempt.id);
   }
@@ -259,11 +262,12 @@ export function applyIntegrityVerdict(db: Db, attempt: AttemptRow) {
  *
  * It is deliberately NOT recorded as `visibility_hidden`. The server cannot
  * tell a closed tab from a dropped connection, a VPN reconnect or a lid that
- * was shut, and `visibility_hidden` carries the ordinary 10-second hard
+ * was shut, and `visibility_hidden` carries the ordinary 30-second hard
  * terminate - which meant every gap past the grace window ended the attempt
  * instantly, since the grace window is longer than that threshold. Silence is
  * the one signal the candidate cannot see happening and cannot argue with, so
- * it is scored on its own, far more forgiving scale.
+ * it is scored on its own scale, and under the current policy costs no
+ * strikes at all: it is either long enough to be final or it is free.
  */
 export function detectHeartbeatGap(db: Db, attempt: AttemptRow): IntegrityEvent | null {
   const gap = Date.now() - attempt.last_seen_at;

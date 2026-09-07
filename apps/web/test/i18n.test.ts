@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { LOCALES, translate } from '../src/lib/i18n.js';
-import type { Locale, StringKey } from '../src/lib/i18n.js';
+import { LOCALES, STRING_KEYS, translate } from '../src/lib/i18n.js';
+import type { Locale } from '../src/lib/i18n.js';
 
 /**
  * The dictionary is typed, so a missing language is a compile error. These
@@ -8,144 +8,19 @@ import type { Locale, StringKey } from '../src/lib/i18n.js';
  * translation, and the interpolation itself.
  */
 
-// Re-derived rather than exported: the module keeps its table private on
-// purpose, and a test that reaches into it would just mirror the source.
-const KEYS: StringKey[] = [
-  'app.name',
-  'app.tagline',
-  'app.variant',
-  'app.loading',
-  'app.footer',
-  'lang.label',
-  'signin.heading',
-  'signin.intro',
-  'signin.button',
-  'signin.domains',
-  'signin.domainsAny',
-  'signin.needTitle',
-  'signin.need1',
-  'signin.need2',
-  'signin.need3',
-  'signin.rulesLater',
-  'signin.failed',
-  'auth.err.auth_domain_not_allowed',
-  'auth.err.auth_email_unverified',
-  'auth.err.auth_state_mismatch',
-  'auth.err.auth_missing_code',
-  'auth.err.access_denied',
-  'auth.err.auth_no_email',
-  'auth.err.auth_no_id_token',
-  'auth.err.auth_not_configured',
-  'auth.err.unknown',
-  'start.heading',
-  'start.intro',
-  'start.stat.questions',
-  'start.stat.time',
-  'start.stat.minutes',
-  'start.covers.title',
-  'start.covers.body',
-  'start.covers.noPrep',
-  'start.rules.title',
-  'start.rules.bannerTitle',
-  'start.rules.bannerBody',
-  'start.rules.foreground',
-  'start.rules.closeTabs',
-  'start.rules.copyPaste',
-  'start.rules.reload',
-  'start.rules.network',
-  'start.rules.answers',
-  'start.form.title',
-  'start.form.signedInAs',
-  'start.form.identityFixed',
-  'start.form.name',
-  'start.form.nameError',
-  'start.form.email',
-  'start.form.emailHint',
-  'start.form.emailError',
-  'start.form.accept',
-  'start.form.submit',
-  'start.form.starting',
-  'start.error',
-  'test.progress',
-  'test.saving',
-  'test.unsaved',
-  'test.answered',
-  'test.answeredAria',
-  'test.retryTitle',
-  'test.retryBody',
-  'test.warnTitle',
-  'test.warnRemaining',
-  'test.multi',
-  'test.back',
-  'test.next',
-  'test.finish',
-  'test.jump',
-  'test.jumpAria',
-  'test.jumpAnswered',
-  'test.jumpUnanswered',
-  'test.allAnswered',
-  'test.stillUnanswered',
-  'test.confirmTitle',
-  'test.confirmAll',
-  'test.confirmSome',
-  'test.keepGoing',
-  'test.submitting',
-  'test.confirmFinish',
-  'test.timeLeft',
-  'result.caption',
-  'result.correct',
-  'result.nextTitle',
-  'result.topRung',
-  'result.expiredTitle',
-  'result.expiredBody',
-  'result.byTier',
-  'result.byTierNote',
-  'result.tierAria',
-  'result.ladderTitle',
-  'result.ladderLevel',
-  'result.ladderRequires',
-  'result.ladderYou',
-  'result.belowTrainee',
-  'result.yourResult',
-  'result.compsTitle',
-  'result.compsNote',
-  'result.compColumn',
-  'result.compLevel',
-  'result.compScore',
-  'result.reviewTitle',
-  'result.answersTitle',
-  'result.hide',
-  'result.showAnswers',
-  'result.showQuestions',
-  'result.keyWithheld',
-  'result.right',
-  'result.wrong',
-  'result.yourAnswer',
-  'result.noAnswer',
-  'result.correctAnswer',
-  'result.restart',
-  'result.restartNote',
-  'term.heading',
-  'term.rulesTitle',
-  'term.default',
-  'term.body',
-  'term.back',
-  'proctor.leftPage',
-  'proctor.navAway',
-  'err.attemptGone',
-  'err.submit',
-  'err.unsavedOnSubmit',
-  'source.pr-matrix',
-  'source.istqb-ctfl',
-  'source.istqb-ctal-ta',
-  'source.istqb-ctal-tm',
-  'source.istqb-glossary',
-  'source.practice-dump',
-];
+
+const KEYS = STRING_KEYS;
 
 const CYRILLIC = /[Ѐ-ӿ]/;
 
 describe('the interface dictionary', () => {
+  it('walks the whole dictionary, not a copy of it', () => {
+    // Guards the guard: an empty or truncated export would make every check
+    // below pass without testing anything.
+    expect(KEYS.length).toBeGreaterThan(100);
+    expect(new Set(KEYS).size).toBe(KEYS.length);
+  });
+
   it('has a non-empty string for every key in both languages', () => {
     for (const key of KEYS) {
       for (const locale of LOCALES) {
