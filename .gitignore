@@ -12,3 +12,19 @@ data/
 .env.local
 .DS_Store
 .vite/
+
+# Credentials that arrive as a downloaded file.
+#
+# A Google service-account key lands in Downloads as `<project-id>-<keyid>.json`
+# and gets dragged into the project directory, where it is untracked, unignored,
+# and one `git add -A` away from being public in a repository that is on GitHub.
+# Rotating a leaked key is easy; noticing it leaked is not.
+#
+# The real home for these is the deployment's environment (see docs), not the
+# working tree - these patterns are the second line of defence, not the first.
+*service-account*.json
+*-service_account*.json
+qa-seniority-checker-*.json
+*.pem
+*.p12
+secrets/
