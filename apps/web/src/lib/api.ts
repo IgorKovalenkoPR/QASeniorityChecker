@@ -68,13 +68,10 @@ export interface Identity {
 
 export interface MetaResponse {
   questionsPerTest: number;
-  variantCount: number;
   durationSeconds: number;
   heartbeatSeconds: number;
-  bank: { total: number; byTier: Record<Tier, number>; bySource: Record<string, number> };
   auth: { mode: 'google' | 'open'; allowedEmailDomains: string[] };
   integrity: { strikesAllowed: number; graceMs: number; hardTerminateMs: number };
-  ladder: { level: Level; label: string; requires: Partial<Record<Tier, number>>; rationale: LocalizedText }[];
   levelLabels: Record<Level, string>;
 }
 

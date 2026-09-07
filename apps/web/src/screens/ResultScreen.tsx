@@ -104,40 +104,16 @@ export function ResultScreen({
         </div>
       </Card>
 
-      {meta ? (
-        <Card>
-          <h2 className="card__title">{t('result.ladderTitle')}</h2>
-          <div className="table__scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('result.ladderLevel')}</th>
-                  <th>{t('result.ladderRequires')}</th>
-                  <th>{t('result.ladderYou')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {meta.ladder.map((rule) => {
-                  const isYou = rule.level === breakdown.level;
-                  const requires = Object.entries(rule.requires)
-                    .map(([t, min]) => `${TIER_LABELS[t as Tier]} >= ${min}%`)
-                    .join(', ');
-                  return (
-                    <tr
-                      key={rule.level}
-                      style={isYou ? { background: 'var(--brand-primary-tint)', fontWeight: 600 } : undefined}
-                    >
-                      <td>{rule.label}</td>
-                      <td className="muted">{requires || t('result.belowTrainee')}</td>
-                      <td>{isYou ? t('result.yourResult') : ''}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      ) : null}
+      {/*
+        A card headed "Where this level sits" used to print the whole 9-rung
+        ladder here with the exact threshold for every rung. Two reasons it is
+        gone: it published the company's Performance Review criteria to anyone
+        who finished an attempt, and it doubled as a map for gaming the next one
+        - the thresholds tell a candidate precisely which tier is worth their
+        effort. What the candidate keeps is the rung they reached, the four tier
+        percentages behind it, and the one threshold that is actually
+        actionable: what the next rung needs (`result.nextTitle`).
+      */}
 
       {weakest.length > 0 ? (
         <Card>

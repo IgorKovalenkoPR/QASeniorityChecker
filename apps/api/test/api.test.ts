@@ -533,13 +533,26 @@ describe('the server owns the clock', () => {
     expect(response.json().error).toBe('attempt_expired');
   });
 
-  it('publishes the rules and the ladder before the test begins', async () => {
+  it('publishes the rules before the test begins, and nothing to revise from', async () => {
+    // /api/meta needs no session, so everything it returns is public. It carries
+    // what the start screen has to say out loud - how long, how many questions,
+    // the integrity thresholds - and none of the three things it used to leak:
+    // the ladder with every threshold and the sheet's own wording, the bank
+    // broken down by tier and syllabus, and how many papers exist.
     const response = await app.inject({ method: 'GET', url: '/api/meta' });
     const body = response.json();
     expect(body.questionsPerTest).toBe(20);
-    expect(body.variantCount).toBe(50);
-    expect(body.ladder).toHaveLength(9);
+    expect(body.durationSeconds).toBeGreaterThan(0);
     expect(body.integrity.strikesAllowed).toBeGreaterThan(0);
+    expect(Object.keys(body.levelLabels)).toHaveLength(9);
+
+    expect(body).not.toHaveProperty('ladder');
+    expect(body).not.toHaveProperty('bank');
+    expect(body).not.toHaveProperty('variantCount');
+    // Nor by any other name: no threshold and no syllabus label anywhere in it.
+    const raw = JSON.stringify(body);
+    expect(raw).not.toContain('istqb');
+    expect(raw).not.toContain('requires');
   });
 });
 

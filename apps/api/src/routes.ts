@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { INTEGRITY_EVENT_TYPES, LEVEL_LABELS, LEVEL_RULES } from '@qasc/core';
+import { INTEGRITY_EVENT_TYPES, LEVEL_LABELS } from '@qasc/core';
 import { QUESTION_BANK, VARIANTS, bankStats } from '@qasc/content';
 import { AuthError } from './auth.js';
 import { currentSession, requireCandidate } from './authRoutes.js';
@@ -162,15 +162,40 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
 
   // --- metadata ------------------------------------------------------------
 
-  app.get('/api/health', () => ({ ok: true, questions: QUESTION_BANK.length, variants: VARIANTS.length }));
+  /**
+   * Liveness. Reports THAT the bank loaded, not how big it is: this endpoint
+   * needs no session either, so printing the counts here would have handed
+   * back the two numbers `/api/meta` just stopped publishing and made that
+   * change cosmetic. Both healthchecks that call this - the Dockerfile's and
+   * compose's - only read the status code.
+   */
+  app.get('/api/health', () => ({
+    ok: true,
+    bankLoaded: QUESTION_BANK.length > 0 && VARIANTS.length > 0,
+  }));
 
-  /** Everything the start screen needs to explain the test before it begins. */
+  /**
+   * Everything the start screen needs to explain the test before it begins -
+   * and deliberately nothing more. This endpoint needs no session, so whatever
+   * it returns is public.
+   *
+   * What it used to return and no longer does:
+   *   - `ladder`: all nine rungs with their exact thresholds AND the sheet's
+   *     own wording for each. That is the client's Performance Review criteria,
+   *     published to anyone who can reach the URL, and a map for gaming the
+   *     next attempt.
+   *   - `bank`: the bank size broken down by tier and by syllabus. The start
+   *     screen stopped displaying it because candidates should not be told what
+   *     to revise; leaving it here left the same answer one request away.
+   *   - `variantCount`: how many papers exist.
+   *
+   * The reviewer still gets the bank statistics from the admin endpoint, which
+   * is behind `QASC_ADMIN_TOKEN`.
+   */
   app.get('/api/meta', () => ({
     questionsPerTest: attemptMeta.questionsPerVariant,
-    variantCount: attemptMeta.variantCount,
     durationSeconds: config.attemptDurationSec,
     heartbeatSeconds: config.heartbeatIntervalSec,
-    bank: bankStats(),
     auth: {
       mode: config.authMode,
       /** Present so the sign-in screen can name the domains it will accept. */
@@ -181,12 +206,7 @@ export function registerRoutes(app: FastifyInstance, db: Db): void {
       graceMs: attemptMeta.policy.graceMs,
       hardTerminateMs: attemptMeta.policy.hardTerminateMs,
     },
-    ladder: LEVEL_RULES.map((rule) => ({
-      level: rule.level,
-      label: rule.label,
-      requires: rule.requires,
-      rationale: rule.rationale,
-    })),
+    /** The rung names, so the result can print one. Names, not thresholds. */
     levelLabels: LEVEL_LABELS,
   }));
 
