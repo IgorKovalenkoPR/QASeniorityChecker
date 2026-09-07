@@ -69,6 +69,33 @@ describe('answer key containment', () => {
     expect(raw).not.toContain('explanation');
   });
 
+  it('never labels a question with its tier, competency or syllabus', async () => {
+    // Removing the badges from the screen would have left the same information
+    // one devtools tab away, so it is not in the payload either. It says which
+    // questions are the hard ones and which syllabus each came from while the
+    // timer is running, which is an invitation to spend the remaining minutes
+    // strategically rather than answer honestly.
+    const started = await startAttempt();
+    for (const question of started.questions) {
+      expect(question).not.toHaveProperty('tier');
+      expect(question).not.toHaveProperty('competencyId');
+      expect(question).not.toHaveProperty('source');
+    }
+    // The result, by contrast, carries all three: that is what makes the rung
+    // explainable, and by then there is nothing left to game. Submitted without
+    // answering anything, because the question metadata does not depend on the
+    // answers and this keeps the test to one thing.
+    const submitted = await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${started.attempt.id}/submit`,
+      headers: started.auth,
+    });
+    const result = submitted.json();
+    expect(result.questions[0]).toHaveProperty('tier');
+    expect(result.questions[0]).toHaveProperty('competencyId');
+    expect(result.questions[0]).toHaveProperty('source');
+  });
+
   it('sends option ids that are unique to the attempt', async () => {
     const a = await startAttempt('A Tester', 'a@example.com');
     const b = await startAttempt('B Tester', 'b@example.com');

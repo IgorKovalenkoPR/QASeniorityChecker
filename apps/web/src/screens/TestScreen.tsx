@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AttemptView, PaperQuestion } from '../lib/api.js';
-import { Banner, Card, Progress, TierBadge, Timer } from '../components/ui.js';
-import { sourceLabel, useI18n } from '../lib/i18n.js';
+import { Banner, Card, Progress, Timer } from '../components/ui.js';
+import { useI18n } from '../lib/i18n.js';
+import type { StringKey } from '../lib/i18n.js';
 
 export interface TestScreenProps {
   attempt: AttemptView;
@@ -9,7 +10,7 @@ export interface TestScreenProps {
   answers: Record<string, string[]>;
   secondsRemaining: number;
   saveStatus: { pending: number; retrying: boolean };
-  warning: string | null;
+  warning: StringKey | null;
   strikesRemaining: number;
   onSelect: (questionId: string, optionIds: string[]) => void;
   onSubmit: () => void;
@@ -97,7 +98,7 @@ export function TestScreen({
 
       {warning ? (
         <Banner tone="warning" title={t('test.warnTitle')}>
-          {warning}
+          {t(warning)}
           {strikesRemaining > 0 ? (
             <>
               {' '}
@@ -108,13 +109,23 @@ export function TestScreen({
       ) : null}
 
       <Card>
-        <div className="question__meta">
-          <TierBadge tier={question.tier} />
-          <span className="badge badge--neutral">{sourceLabel(t, question.source)}</span>
-          {question.multiSelect ? (
+        {/*
+          No tier and no source. Both used to sit here, on the argument that they
+          say what a question is about and reveal nothing about the answer - but
+          they do tell the candidate which questions are the hard ones and which
+          syllabus they came from, mid-attempt, which is a prompt to spend the
+          remaining time strategically rather than answer honestly. The result
+          screen shows both, once the attempt is over and they explain the rung.
+
+          Rendered only when there is something to say, because the row carries a
+          bottom margin and an empty one would push the question down for no
+          reason.
+        */}
+        {question.multiSelect ? (
+          <div className="question__meta">
             <span className="badge badge--neutral">{t('test.multi')}</span>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <h2 className="question__text">{text(question.text)}</h2>
 

@@ -25,9 +25,6 @@ export interface PaperQuestion {
   text: LocalizedText;
   options: { id: string; text: LocalizedText }[];
   multiSelect: boolean;
-  tier: Tier;
-  competencyId: string;
-  source: string;
 }
 
 export interface StartResponse {

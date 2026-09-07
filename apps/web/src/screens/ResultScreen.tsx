@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Level, Tier } from '@qasc/core';
 import { COMPETENCY_BY_ID, TIERS, competencyLabel } from '@qasc/core';
 import type { MetaResponse, ResultResponse } from '../lib/api.js';
-import { Banner, Card, TIER_LABELS } from '../components/ui.js';
+import { Banner, Card, TIER_LABELS, TierBadge } from '../components/ui.js';
 import { sourceLabel, useI18n } from '../lib/i18n.js';
 
 /** Which tier colour a level badge takes. */
@@ -159,7 +159,7 @@ export function ResultScreen({
                   <tr key={c.competencyId}>
                     <td>{competencyName(c.competencyId, c.label, locale)}</td>
                     <td>
-                      <span className={`badge badge--${c.tier}`}>{TIER_LABELS[c.tier]}</span>
+                      <TierBadge tier={c.tier} />
                     </td>
                     <td>
                       {c.correct}/{c.total}
@@ -196,7 +196,7 @@ export function ResultScreen({
               <article key={q.id} className={`review__item ${q.correct ? '' : 'review__item--wrong'}`.trim()}>
                 <div className="question__meta">
                   <span className="badge badge--neutral">{i + 1}</span>
-                  <span className={`badge badge--${q.tier}`}>{TIER_LABELS[q.tier]}</span>
+                  <TierBadge tier={q.tier} />
                   <span className="badge badge--neutral">{sourceLabel(t, q.source)}</span>
                   <span className={`option__mark option__mark--${q.correct ? 'correct' : 'incorrect'}`}>
                     {q.correct ? t('result.right') : t('result.wrong')}

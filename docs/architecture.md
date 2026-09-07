@@ -125,6 +125,12 @@ guard scans `*.js` only. The SPA contains no bank, so nothing leaks through
 them today, but if the bank ever reached the client, sourcemaps would be a
 second door.
 
+The field-by-field construction earns its keep beyond the key itself: the paper
+also withholds each question's tier, competency and source, because the browser
+does not need them and a candidate mid-attempt should not have them (§8.3).
+`apps/api/test/api.test.ts` asserts their absence from the paper and their
+presence on the result, so the two cannot drift into each other.
+
 ### 3.2 The 50 papers are deterministic
 
 `buildVariants` is seeded with the literal `'qasc-variants-v1'`. Paper 17 today
@@ -263,6 +269,11 @@ told what stopped them rather than what some higher row happens to want.
 Papers are generated at import time from the seed, not per attempt. An attempt
 stores only its `variant_number`.
 
+What reaches the browser is narrow on purpose: an id, a position, the question
+text and its options in both languages, and whether more than one option is
+correct. Nothing else — see §3.1 for why it is built field by field and §8.3 for
+why the tier and the source are not in the list.
+
 Option ids sent to the browser are **opaque**: `opaqueOptionId` HMACs
 (attempt id, question id, option id) with `QASC_OPTION_SECRET`. Two
 consequences:
@@ -347,7 +358,7 @@ A candidate reading the English result therefore sees the exact wording their
 review will use. The coupling is deliberate and worth knowing: `sheetRow` is now
 read by the UI as well as by the audit trail.
 
-### 8.3 What the start screen deliberately does not say
+### 8.3 What the candidate is not told, and when
 
 Not how many questions are in the bank, not how many papers exist, not the tier
 quota, and not which syllabi the questions come from. All of that reads as a
@@ -361,6 +372,27 @@ candidate could act on none of it, and it still read as a hint about what to
 revise. The one sentence worth keeping, that there is nothing to prepare for,
 now sits under the two facts in the hero, where it reassures without describing
 anything.
+
+**The question screen does not label the question either.** Each question used
+to carry its tier and its source as badges — `MIDDLE`, `PERFORMANCE REVIEW
+MATRIX` — on the argument that they say what a question is about and give
+nothing away about the answer. Both halves of that were wrong. They tell a
+candidate which questions are the hard ones and which syllabus each came from
+*while the timer is running*, which is an invitation to spend the remaining
+minutes strategically rather than answer honestly. And taking the badges off the
+screen alone would have left the same information one devtools tab away, so
+`PaperQuestion` no longer carries `tier`, `competencyId` or `source` at all.
+
+The result screen shows all three, and should: by then there is nothing left to
+game, and they are what make the rung explainable. `ResultQuestion` reads them
+from the bank when the result is built, so it never depended on the paper
+payload.
+
+The one thing still on screen that describes the paper is the variant number
+(`Paper 17`). It discloses a lower bound on how many papers exist and lets two
+candidates establish that they got the same one. It is left in place because
+nobody has asked for it to go and it is a support handle, but it is the same
+class of disclosure as the two badges above.
 
 ---
 
