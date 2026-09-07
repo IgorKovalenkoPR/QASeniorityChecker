@@ -71,7 +71,6 @@ export function TestScreen({
             <strong>
               {t('test.progress', { i: index + 1, n: questions.length })}
             </strong>
-            <span className="badge badge--neutral">{t('app.variant', { n: attempt.variantNumber })}</span>
           </div>
           <div className="row">
             {saveStatus.pending > 0 && !saveStatus.retrying ? (

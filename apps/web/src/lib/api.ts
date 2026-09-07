@@ -6,7 +6,6 @@ const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 export interface AttemptView {
   id: string;
   status: 'in_progress' | 'submitted' | 'expired' | 'terminated';
-  variantNumber: number;
   candidateName: string;
   startedAt: number;
   deadlineAt: number;

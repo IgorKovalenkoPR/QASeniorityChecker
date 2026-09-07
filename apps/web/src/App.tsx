@@ -437,9 +437,6 @@ export function App() {
         </div>
         <div className="app__header-right">
           <LocaleSwitch />
-          {phase === 'test' && attempt ? (
-            <span className="badge badge--neutral">{t('app.variant', { n: attempt.variantNumber })}</span>
-          ) : null}
         </div>
       </header>
 

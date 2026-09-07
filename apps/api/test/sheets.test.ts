@@ -34,7 +34,7 @@ async function load(configured: boolean) {
   return { app, db, ...outbox, ...sheets };
 }
 
-async function takeTest(app: FastifyInstance, howMany: number) {
+async function takeTest(app: FastifyInstance, db: Db, howMany: number) {
   const started = (
     await app.inject({
       method: 'POST',
@@ -47,7 +47,14 @@ async function takeTest(app: FastifyInstance, howMany: number) {
     })
   ).json();
   const auth = { authorization: `Bearer ${started.token}` };
-  const variant = VARIANT_BY_NUMBER.get(started.attempt.variantNumber)!;
+  // From the database, not the response: the candidate's attempt view no
+  // longer carries the variant number, and this helper needs the answer key.
+  const variantNumber = (
+    db.prepare('SELECT variant_number AS n FROM attempts WHERE id = ?').get(started.attempt.id) as {
+      n: number;
+    }
+  ).n;
+  const variant = VARIANT_BY_NUMBER.get(variantNumber)!;
   let answered = 0;
   for (const questionId of variant.questionIds) {
     if (answered >= howMany) break;
@@ -94,7 +101,7 @@ describe('the row that lands in the spreadsheet', () => {
     // The rung alone is the wrong thing to read: the ladder is cumulative, so a
     // single low-tier miss caps it. The tiers are what say whether a result
     // means what it looks like.
-    const { attemptId } = await takeTest(mod.app, 10);
+    const { attemptId } = await takeTest(mod.app, mod.db, 10);
     const queued = mod.db
       .prepare('SELECT row_json FROM sheet_exports WHERE attempt_id = ?')
       .get(attemptId) as { row_json: string };
@@ -165,7 +172,7 @@ describe('the row that lands in the spreadsheet', () => {
   it('queues one row per attempt, even when it is scored twice', async () => {
     // Re-scoring after a reinstatement must replace the queued row, not append
     // a second one - otherwise the sheet gets two rows for one person.
-    const { attemptId, auth } = await takeTest(mod.app, 4);
+    const { attemptId, auth } = await takeTest(mod.app, mod.db, 4);
     await mod.app.inject({
       method: 'POST',
       url: `/api/attempts/${attemptId}/submit`,
@@ -184,7 +191,7 @@ describe('the outbox', () => {
     // the service account does. Nothing may be lost to "we had not set it up".
     const unconfigured = await load(false);
     try {
-      await takeTest(unconfigured.app, 6);
+      await takeTest(unconfigured.app, unconfigured.db, 6);
       expect(unconfigured.exportStats(unconfigured.db).pending).toBe(1);
 
       const skipped = await unconfigured.flushExports(unconfigured.db, async () => {
@@ -201,7 +208,7 @@ describe('the outbox', () => {
     // Credentials arrive. The backlog drains.
     const configured = await load(true);
     try {
-      await takeTest(configured.app, 6);
+      await takeTest(configured.app, configured.db, 6);
       const sentRows: (string | number)[][] = [];
       const result = await configured.flushExports(configured.db, async (rows) => {
         sentRows.push(...rows);
@@ -218,9 +225,9 @@ describe('the outbox', () => {
   it('sends the whole batch in one call rather than a request per row', async () => {
     const mod = await load(true);
     try {
-      await takeTest(mod.app, 2);
-      await takeTest(mod.app, 3);
-      await takeTest(mod.app, 4);
+      await takeTest(mod.app, mod.db, 2);
+      await takeTest(mod.app, mod.db, 3);
+      await takeTest(mod.app, mod.db, 4);
 
       const calls: number[] = [];
       const result = await mod.flushExports(mod.db, async (rows) => {
@@ -237,7 +244,7 @@ describe('the outbox', () => {
   it('keeps a row queued when the send fails, and sends it on the next flush', async () => {
     const mod = await load(true);
     try {
-      await takeTest(mod.app, 5);
+      await takeTest(mod.app, mod.db, 5);
 
       const failed = await mod.flushExports(mod.db, async () => {
         throw new TypeError('Failed to fetch');
@@ -264,7 +271,7 @@ describe('the outbox', () => {
     // which is the one failure this whole mechanism exists to prevent.
     const mod = await load(true);
     try {
-      await takeTest(mod.app, 1);
+      await takeTest(mod.app, mod.db, 1);
       await mod.flushExports(mod.db, async () => {
         throw new Error('nope');
       });
@@ -284,7 +291,7 @@ describe('the outbox', () => {
     // that only grows.
     const mod = await load(true);
     try {
-      await takeTest(mod.app, 1);
+      await takeTest(mod.app, mod.db, 1);
       await mod.flushExports(mod.db, async () => {
         throw Object.assign(new Error('The caller does not have permission'), { status: 403 });
       });
@@ -332,7 +339,7 @@ describe('the reviewer can see whether results are arriving', () => {
     process.env.QASC_ADMIN_TOKEN = 'admin-token';
     const mod = await load(true);
     try {
-      await takeTest(mod.app, 3);
+      await takeTest(mod.app, mod.db, 3);
       await mod.flushExports(mod.db, async () => {
         throw new TypeError('Failed to fetch');
       });
@@ -359,7 +366,7 @@ describe('the reviewer can see whether results are arriving', () => {
     process.env.QASC_ADMIN_TOKEN = 'admin-token';
     const mod = await load(false);
     try {
-      await takeTest(mod.app, 3);
+      await takeTest(mod.app, mod.db, 3);
       const status = await mod.app.inject({
         method: 'GET',
         url: '/api/admin/sheet-exports',

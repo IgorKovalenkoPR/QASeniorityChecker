@@ -2,12 +2,12 @@ import type { ReactNode } from 'react';
 import type { Tier } from '@qasc/core';
 import { useI18n } from '../lib/i18n.js';
 
-export const TIER_LABELS: Record<Tier, string> = {
-  trainee: 'Trainee',
-  junior: 'Junior',
-  middle: 'Middle',
-  senior: 'Senior',
-};
+// Re-exported rather than redefined: the same names are needed in core, where
+// `describeGap` composes a sentence out of them, and two copies of a label are
+// two things to keep in step. Imported as well as re-exported, because
+// `TierBadge` below reads it.
+import { TIER_LABELS } from '@qasc/core';
+export { TIER_LABELS };
 
 /**
  * Рівні лишаються англійськими: це власні назви щаблів компанії з таблиці

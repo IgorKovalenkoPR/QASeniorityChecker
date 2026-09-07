@@ -90,12 +90,18 @@ function attemptToken(request: FastifyRequest): string | undefined {
   return typeof query?.token === 'string' ? query.token : undefined;
 }
 
-/** Public view of an attempt. Deliberately excludes token_hash and the answers. */
+/**
+ * Public view of an attempt. Deliberately excludes token_hash and the answers -
+ * and the variant number, which told the candidate which paper they were on. It
+ * discloses a lower bound on how many papers exist and lets two candidates
+ * establish that they got the same one, and nothing on their side of the screen
+ * needed it. The reviewer still has it, in the roster and in the spreadsheet
+ * column, which is where "which paper did they get" is actually asked.
+ */
 function attemptView(attempt: AttemptRow) {
   return {
     id: attempt.id,
     status: attempt.status,
-    variantNumber: attempt.variant_number,
     candidateName: attempt.candidate_name,
     startedAt: attempt.started_at,
     deadlineAt: attempt.deadline_at,
