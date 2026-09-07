@@ -204,11 +204,16 @@ describe('the Performance Review ladder', () => {
     for (const locale of ['en', 'uk'] as const) {
       const text = gap?.[locale] ?? '';
       expect(text, locale).toContain('Middle-');
-      expect(text, locale).toContain('junior');
+      // The tier is a proper noun and is written as one: the Ukrainian used to
+      // interpolate the raw id and read `рівень trainee`.
+      expect(text, locale).toContain('Junior');
       expect(text, locale).toContain('75');
+      expect(text, locale).toContain('67');
       // And it does not point at the middle or senior tiers, already full.
-      expect(text, locale).not.toContain('middle');
-      expect(text, locale).not.toContain('senior');
+      // Case-insensitively, because `Middle-` is the rung name in the sentence
+      // and only a TIER named Middle would be wrong here.
+      expect(text.replace('Middle-', ''), locale).not.toMatch(/middle/i);
+      expect(text, locale).not.toMatch(/senior/i);
     }
   });
 

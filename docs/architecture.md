@@ -262,6 +262,21 @@ result and into the spreadsheet row. Because the award is the rung below the
 first failure, the rung above it *is* the real obstacle — so the candidate is
 told what stopped them rather than what some higher row happens to want.
 
+It reads `To reach Middle- you need 75% at Junior (you have 67%).` and
+`Щоб досягти Middle-, потрібно 75% на рівні Junior (у вас 67%).` Three things
+about that are deliberate, because the previous version got each of them wrong:
+the shortfalls are listed **lowest tier first** (object key order decided
+before, and in `LEVEL_RULES` it runs the other way, so the sentence opened with
+the senior requirement and mentioned the fundamentals last — the opposite of the
+order a cumulative ladder should be worked in); the tier is written as the
+proper noun it is, from `TIER_LABELS` in core, rather than interpolated as a raw
+id, which in Ukrainian produced `рівень trainee`; and the shape is
+"you need X% at T (you have Y%)" rather than `T: Y% -> needs X%`, which nested a
+colon inside a sentence that already had one and used an ASCII arrow.
+
+`TIER_LABELS` moved into core for this. The browser had the only copy, which is
+precisely why core had nothing to interpolate but the id.
+
 That one gap is the **only** threshold the candidate sees. The result screen
 used to end with a card headed *Where this level sits* that printed all nine
 rungs with their exact thresholds, and `/api/meta` served the same table
@@ -398,11 +413,14 @@ game, and they are what make the rung explainable. `ResultQuestion` reads them
 from the bank when the result is built, so it never depended on the paper
 payload.
 
-The one thing still on screen that describes the paper is the variant number
-(`Paper 17`). It discloses a lower bound on how many papers exist and lets two
-candidates establish that they got the same one. It is left in place because
-nobody has asked for it to go and it is a support handle, but it is the same
-class of disclosure as the two badges above.
+**And not the paper number.** `Paper 17` used to sit in the header and next to
+the progress counter. It discloses a lower bound on how many papers exist and
+lets two candidates establish that they got the same one, and nothing on the
+candidate's side of the screen needed it - so `attemptView` no longer returns
+`variantNumber` either. The reviewer keeps it, in the roster and in the
+spreadsheet column, which is where "which paper did they get" is actually asked.
+The API tests that need the answer key read it straight out of the database,
+which is the honest way for a test to know something the candidate does not.
 
 **And not through an endpoint either.** `/api/meta` and `/api/health` both
 answer without a session, so whatever they return is public. Between them they

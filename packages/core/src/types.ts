@@ -19,6 +19,22 @@
 export const TIERS = ['trainee', 'junior', 'middle', 'senior'] as const;
 export type Tier = (typeof TIERS)[number];
 
+/**
+ * How a tier is written when a person reads it.
+ *
+ * English in both languages on purpose: these are the column names of the
+ * client's own Performance Review sheet, and the ladder names beside them are
+ * kept English for the same reason (see the note in `levels.ts`). It lives in
+ * core because `describeGap` needs it too, and the browser had the only copy -
+ * which is how a sentence reading `рівень trainee` reached the result screen.
+ */
+export const TIER_LABELS: Record<Tier, string> = {
+  trainee: 'Trainee',
+  junior: 'Junior',
+  middle: 'Middle',
+  senior: 'Senior',
+};
+
 /** The nine rungs of the Performance Review ladder, weakest first. */
 export const LEVELS = [
   'trainee_minus',

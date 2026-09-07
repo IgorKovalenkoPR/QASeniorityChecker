@@ -28,12 +28,31 @@ async function startAttempt(name = 'Anna Tester', email = 'anna@example.com') {
   return { ...body, auth: { authorization: `Bearer ${body.token}` } };
 }
 
+/**
+ * Which paper an attempt got.
+ *
+ * Read from the database rather than from the response: the candidate's attempt
+ * view deliberately no longer carries the variant number, and a test that needs
+ * the correct answers is exactly the caller that is allowed to look it up.
+ */
+function variantOf(source: Db, attemptId: string): number {
+  const row = source
+    .prepare('SELECT variant_number AS n FROM attempts WHERE id = ?')
+    .get(attemptId) as { n: number } | undefined;
+  if (!row) throw new Error(`No attempt ${attemptId}`);
+  return row.n;
+}
+
 describe('starting an attempt', () => {
   it('assigns a variant and returns exactly 20 questions', async () => {
     const { attempt, questions } = await startAttempt();
-    expect(attempt.variantNumber).toBeGreaterThanOrEqual(1);
-    expect(attempt.variantNumber).toBeLessThanOrEqual(50);
+    const variant = variantOf(db, attempt.id);
+    expect(variant).toBeGreaterThanOrEqual(1);
+    expect(variant).toBeLessThanOrEqual(50);
     expect(questions).toHaveLength(20);
+    // And the candidate is not told which one it was: the number discloses how
+    // many papers exist and lets two candidates compare notes.
+    expect(attempt).not.toHaveProperty('variantNumber');
   });
 
   it('rejects a start without acknowledging the integrity rules', async () => {
@@ -57,7 +76,7 @@ describe('starting an attempt', () => {
   it('spreads consecutive candidates across different variants', async () => {
     const first = await startAttempt('One Tester', 'one@example.com');
     const second = await startAttempt('Two Tester', 'two@example.com');
-    expect(second.attempt.variantNumber).not.toBe(first.attempt.variantNumber);
+    expect(variantOf(db, second.attempt.id)).not.toBe(variantOf(db, first.attempt.id));
   });
 });
 
@@ -165,7 +184,7 @@ describe('authorization', () => {
 describe('taking the test', () => {
   /** Answers the whole paper correctly by reading the key out of the bank. */
   async function answerAll(started: any, howMany = 20) {
-    const variant = VARIANT_BY_NUMBER.get(started.attempt.variantNumber)!;
+    const variant = VARIANT_BY_NUMBER.get(variantOf(db, started.attempt.id))!;
     let answered = 0;
     for (const questionId of variant.questionIds) {
       if (answered >= howMany) break;
@@ -656,7 +675,7 @@ describe('reinstating a falsely terminated attempt', () => {
   }
 
   async function answerCorrectly(started: any, howMany: number) {
-    const variant = VARIANT_BY_NUMBER.get(started.attempt.variantNumber)!;
+    const variant = VARIANT_BY_NUMBER.get(variantOf(adminDb, started.attempt.id))!;
     let answered = 0;
     for (const questionId of variant.questionIds) {
       if (answered >= howMany) break;

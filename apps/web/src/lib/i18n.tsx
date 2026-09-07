@@ -53,7 +53,6 @@ const S = {
     en: 'a self-check before your Performance Review',
     uk: 'самооцінка перед Performance Review',
   },
-  'app.variant': { en: 'Paper {n}', uk: 'Варіант {n}' },
   'app.loading': { en: 'Loading…', uk: 'Завантаження…' },
   'app.footer': {
     en: 'The estimated level is a starting point for the Performance Review conversation, not the review itself.',

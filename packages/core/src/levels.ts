@@ -1,3 +1,4 @@
+import { TIERS, TIER_LABELS } from './types.js';
 import type { Level, LocalizedText, Tier } from './types.js';
 
 /**
@@ -193,23 +194,38 @@ export function describeGap(
 ): LocalizedText | null {
   const next = nextRule(level);
   if (!next) return null;
-  const short = Object.entries(next.requires).filter(
-    ([tier, min]) => percents[tier as Tier] < (min as number),
-  );
+
+  // Lowest tier first, which is both the order the ladder reads in and the order
+  // the candidate should work in: it is cumulative, so a shortfall low down caps
+  // the result whatever happens above it. Object key order would otherwise
+  // decide, and in `LEVEL_RULES` it happens to run the other way - the sentence
+  // used to open with the senior requirement and mention the fundamentals last.
+  const short = TIERS.filter((tier) => {
+    const min = next.requires[tier];
+    return min !== undefined && percents[tier] < min;
+  }).map((tier) => ({ tier, min: next.requires[tier] as number }));
+
   if (short.length === 0) return null;
 
   // Built in both languages here rather than returned as data and formatted at
   // the edges: it is written into the stored result and into the spreadsheet
   // row as well as onto the screen, and three formatters would drift.
+  //
+  // The shape is "you need X% at <Tier> (you have Y%)" rather than the old
+  // "<tier>: Y% -> needs X%". The old one nested a colon inside a sentence that
+  // already had one, used an ASCII arrow, and - in Ukrainian - dropped the raw
+  // lowercase tier id into the prose after the word `рівень`, so it read
+  // "рівень trainee". The tier is a proper noun here and is capitalised.
   const render = (locale: 'en' | 'uk'): string => {
-    const parts = short.map(([tier, min]) =>
-      locale === 'en'
-        ? `${tier}: ${percents[tier as Tier].toFixed(0)}%, needs ${min}%`
-        : `рівень ${tier}: ${percents[tier as Tier].toFixed(0)}% -> потрібно ${min}%`,
-    );
+    const parts = short.map(({ tier, min }) => {
+      const have = percents[tier].toFixed(0);
+      return locale === 'en'
+        ? `${min}% at ${TIER_LABELS[tier]} (you have ${have}%)`
+        : `${min}% на рівні ${TIER_LABELS[tier]} (у вас ${have}%)`;
+    });
     return locale === 'en'
-      ? `To reach ${next.label}: ${parts.join('; ')}.`
-      : `Щоб досягти ${next.label}: ${parts.join('; ')}.`;
+      ? `To reach ${next.label} you need ${parts.join(' and ')}.`
+      : `Щоб досягти ${next.label}, потрібно ${parts.join(' і ')}.`;
   };
 
   return { en: render('en'), uk: render('uk') };
