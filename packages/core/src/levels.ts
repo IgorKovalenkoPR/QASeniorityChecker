@@ -1,4 +1,4 @@
-import type { Level, Tier } from './types.js';
+import type { Level, LocalizedText, Tier } from './types.js';
 
 /**
  * The promotion ladder, transcribed from row 4 of the Performance Review sheet
@@ -33,8 +33,14 @@ export interface LevelRule {
   label: string;
   /** Minimum tier percentages that must all be met. */
   requires: Partial<Record<Tier, number>>;
-  /** Sheet wording, surfaced in the result so the rule is auditable. */
-  rationale: string;
+  /**
+    * Sheet wording, surfaced in the result so the rule is auditable.
+    *
+    * The English side is the sheet's own English phrasing - the same wording
+    * this file's header records - rather than a translation of the Ukrainian,
+    * so a candidate reading it in English sees what their review will say.
+    */
+  rationale: LocalizedText;
 }
 
 /**
@@ -47,60 +53,92 @@ export const LEVEL_RULES: readonly LevelRule[] = [
     level: 'trainee_minus',
     label: 'Trainee-',
     requires: {},
-    rationale: 'Нижче порога Trainee: правильних відповідей на питання рівня Trainee менше ніж 25%.',
+    rationale: {
+      uk: 'Нижче порога Trainee: правильних відповідей на питання рівня Trainee менше ніж 25%.',
+      en: 'Below the Trainee threshold: fewer than 25% of the Trainee-level questions were answered correctly.',
+    },
   },
   {
     level: 'trainee',
     label: 'Trainee',
     requires: { trainee: 25 },
-    rationale: 'Кожен пункт навичок поточного рівня ("сірий") має щонайменше 25 балів.',
+    rationale: {
+      uk: 'Кожен пункт навичок поточного рівня ("сірий") має щонайменше 25 балів.',
+      en: 'Every skill item at the current level ("grey") scores at least 25 points.',
+    },
   },
   {
     level: 'junior_minus',
     label: 'Junior-',
     requires: { trainee: 50 },
-    rationale: 'Кожен пункт навичок поточного рівня ("сірий") має щонайменше 50 балів.',
+    rationale: {
+      uk: 'Кожен пункт навичок поточного рівня ("сірий") має щонайменше 50 балів.',
+      en: 'Every skill item at the current level ("grey") scores at least 50 points.',
+    },
   },
   {
     level: 'junior',
     label: 'Junior',
     requires: { junior: 25, trainee: 50 },
-    rationale:
-      'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 25 балів, а всі пункти рівня Trainee ("сірий") - 50. Підтвердження рівня також очікує ISTQB Foundation Level.',
+    rationale: {
+      uk:
+        'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 25 балів, а всі пункти рівня Trainee ("сірий") - 50. Підтвердження рівня також очікує ISTQB Foundation Level.',
+      en:
+        'Every skill item at the current level ("green") scores at least 25 points, and every Trainee item ("grey") scores 50. Confirming the level also expects an ISTQB Foundation Level certification.',
+    },
   },
   {
     level: 'junior_plus',
     label: 'Junior+',
     requires: { junior: 50, trainee: 75 },
-    rationale:
-      'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 50 балів, а всі пункти рівня Trainee ("сірий") - 75.',
+    rationale: {
+      uk:
+        'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 50 балів, а всі пункти рівня Trainee ("сірий") - 75.',
+      en:
+        'Every skill item at the current level ("green") scores at least 50 points, and every Trainee item ("grey") scores 75.',
+    },
   },
   {
     level: 'middle_minus',
     label: 'Middle-',
     requires: { junior: 75, trainee: 75 },
-    rationale: 'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 75 балів.',
+    rationale: {
+      uk: 'Кожен пункт навичок поточного рівня ("зелений") має щонайменше 75 балів.',
+      en: 'Every skill item at the current level ("green") scores at least 75 points.',
+    },
   },
   {
     level: 'middle',
     label: 'Middle',
     requires: { middle: 50, junior: 75 },
-    rationale:
-      'Кожен пункт навичок поточного рівня ("жовтий") має щонайменше 50 балів, а всі пункти рівня Junior ("зелений") - 75.',
+    rationale: {
+      uk:
+        'Кожен пункт навичок поточного рівня ("жовтий") має щонайменше 50 балів, а всі пункти рівня Junior ("зелений") - 75.',
+      en:
+        'Every skill item at the current level ("yellow") scores at least 50 points, and every Junior item ("green") scores 75.',
+    },
   },
   {
     level: 'middle_plus',
     label: 'Middle+',
     requires: { senior: 25, middle: 75 },
-    rationale:
-      'Кожен пункт навичок рівня Senior ("червоний") має щонайменше 25 балів, а всі пункти рівня Middle ("жовтий") - щонайменше 75.',
+    rationale: {
+      uk:
+        'Кожен пункт навичок рівня Senior ("червоний") має щонайменше 25 балів, а всі пункти рівня Middle ("жовтий") - щонайменше 75.',
+      en:
+        'Every Senior skill item ("red") scores at least 25 points, and every Middle item ("yellow") scores at least 75.',
+    },
   },
   {
     level: 'senior',
     label: 'Senior',
     requires: { senior: 50, middle: 75 },
-    rationale:
-      'Кожен пункт навичок поточного рівня ("червоний") має щонайменше 50 балів, а всі пункти рівня Middle ("жовтий") - щонайменше 75. Підтвердження рівня також очікує ISTQB Advanced Level.',
+    rationale: {
+      uk:
+        'Кожен пункт навичок поточного рівня ("червоний") має щонайменше 50 балів, а всі пункти рівня Middle ("жовтий") - щонайменше 75. Підтвердження рівня також очікує ISTQB Advanced Level.',
+      en:
+        'Every skill item at the current level ("red") scores at least 50 points, and every Middle item ("yellow") scores at least 75. Confirming the level also expects an ISTQB Advanced Level certification.',
+    },
   },
 ] as const;
 
@@ -149,12 +187,30 @@ export function nextRule(level: Level): LevelRule | null {
 }
 
 /** Plain-language description of what is still missing for the next rung. */
-export function describeGap(level: Level, percents: Record<Tier, number>): string | null {
+export function describeGap(
+  level: Level,
+  percents: Record<Tier, number>,
+): LocalizedText | null {
   const next = nextRule(level);
   if (!next) return null;
-  const missing = Object.entries(next.requires)
-    .filter(([tier, min]) => percents[tier as Tier] < (min as number))
-    .map(([tier, min]) => `рівень ${tier}: ${percents[tier as Tier].toFixed(0)}% -> потрібно ${min}%`);
-  if (missing.length === 0) return null;
-  return `Щоб досягти ${next.label}: ${missing.join('; ')}.`;
+  const short = Object.entries(next.requires).filter(
+    ([tier, min]) => percents[tier as Tier] < (min as number),
+  );
+  if (short.length === 0) return null;
+
+  // Built in both languages here rather than returned as data and formatted at
+  // the edges: it is written into the stored result and into the spreadsheet
+  // row as well as onto the screen, and three formatters would drift.
+  const render = (locale: 'en' | 'uk'): string => {
+    const parts = short.map(([tier, min]) =>
+      locale === 'en'
+        ? `${tier}: ${percents[tier as Tier].toFixed(0)}%, needs ${min}%`
+        : `рівень ${tier}: ${percents[tier as Tier].toFixed(0)}% -> потрібно ${min}%`,
+    );
+    return locale === 'en'
+      ? `To reach ${next.label}: ${parts.join('; ')}.`
+      : `Щоб досягти ${next.label}: ${parts.join('; ')}.`;
+  };
+
+  return { en: render('en'), uk: render('uk') };
 }

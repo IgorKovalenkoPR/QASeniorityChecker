@@ -198,18 +198,29 @@ describe('the Performance Review ladder', () => {
     const percents = { trainee: 100, junior: 66.7, middle: 100, senior: 100 };
     expect(resolveLevel(percents).level).toBe('junior_plus');
     const gap = describeGap('junior_plus', percents);
-    expect(gap).toContain('Middle-');
-    expect(gap).toContain('junior');
-    expect(gap).toContain('75');
-    // And it does not point at the middle or senior tiers, which are already full.
-    expect(gap).not.toContain('middle');
-    expect(gap).not.toContain('senior');
+    // Checked in both languages: the text goes on the screen, into the stored
+    // result and into the spreadsheet row, so a language that drifted would
+    // mislead a reader rather than fail visibly.
+    for (const locale of ['en', 'uk'] as const) {
+      const text = gap?.[locale] ?? '';
+      expect(text, locale).toContain('Middle-');
+      expect(text, locale).toContain('junior');
+      expect(text, locale).toContain('75');
+      // And it does not point at the middle or senior tiers, already full.
+      expect(text, locale).not.toContain('middle');
+      expect(text, locale).not.toContain('senior');
+    }
   });
 
   it('explains what is missing for the next rung', () => {
     const gap = describeGap('junior', { trainee: 60, junior: 30, middle: 0, senior: 0 });
-    expect(gap).toContain('Junior+');
-    expect(gap).toContain('75');
+    expect(gap?.en).toContain('Junior+');
+    expect(gap?.en).toContain('75');
+    expect(gap?.uk).toContain('Junior+');
+    expect(gap?.uk).toContain('75');
+    // The same numbers in both, so the two languages cannot disagree about
+    // what the candidate is short of.
+    expect(gap?.en.match(/\d+/g)).toEqual(gap?.uk.match(/\d+/g));
   });
 
   it('has no gap to describe at the top of the ladder', () => {

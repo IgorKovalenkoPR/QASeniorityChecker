@@ -102,13 +102,13 @@ describe('the row that lands in the spreadsheet', () => {
 
     expect(row).toHaveLength(mod.SHEET_HEADER.length);
     const at = (label: string) => row[mod.SHEET_HEADER.indexOf(label)];
-    expect(at('Пошта')).toBe('anna@qarea.com');
-    expect(at('Імʼя')).toBe('Anna Tester');
-    expect(at('Правильних')).toBe(10);
-    expect(at('Питань')).toBe(20);
+    expect(at('Email')).toBe('anna@qarea.com');
+    expect(at('Name')).toBe('Anna Tester');
+    expect(at('Correct')).toBe(10);
+    expect(at('Questions')).toBe(20);
     expect(typeof at('Trainee %')).toBe('number');
     expect(typeof at('Senior %')).toBe('number');
-    expect(at('ID спроби')).toBe(attemptId);
+    expect(at('Attempt id')).toBe(attemptId);
   });
 
   it('has a header for every column it writes', () => {
@@ -154,7 +154,7 @@ describe('the row that lands in the spreadsheet', () => {
         .prepare('SELECT row_json FROM sheet_exports WHERE attempt_id = ?')
         .get(started.attempt.id) as { row_json: string };
       const row = JSON.parse(queued.row_json) as string[];
-      expect(row[SHEET_HEADER.indexOf('Скасовано рецензентом')]).toBe('так');
+      expect(row[SHEET_HEADER.indexOf('Reinstated by reviewer')]).toBe('yes');
     } finally {
       delete process.env.QASC_ADMIN_TOKEN;
       await app.close();

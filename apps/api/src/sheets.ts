@@ -24,7 +24,7 @@
  */
 
 import { JWT } from 'google-auth-library';
-import { LEVEL_LABELS } from '@qasc/core';
+import { COMPETENCY_BY_ID, LEVEL_LABELS, competencyLabel } from '@qasc/core';
 import type { ScoreBreakdown, Tier } from '@qasc/core';
 import { config } from './config.js';
 
@@ -60,26 +60,26 @@ const TIER_ORDER: Tier[] = ['trainee', 'junior', 'middle', 'senior'];
  * so the tiers are what tell you whether a result means what it says.
  */
 export const SHEET_HEADER: string[] = [
-  'Завершено',
-  'Імʼя',
-  'Пошта',
-  'Щабель',
-  'Правильних',
-  'Питань',
-  'Відсоток',
+  'Finished',
+  'Name',
+  'Email',
+  'Level',
+  'Correct',
+  'Questions',
+  'Percent',
   'Trainee %',
   'Junior %',
   'Middle %',
   'Senior %',
-  'Найслабші компетенції',
-  'Наступний щабель',
-  'Що для нього треба',
-  'Варіант',
-  'Статус',
-  'Страйків',
-  'Причина завершення',
-  'Скасовано рецензентом',
-  'ID спроби',
+  'Weakest competencies',
+  'Next rung',
+  'What it takes',
+  'Paper',
+  'Status',
+  'Strikes',
+  'Termination reason',
+  'Reinstated by reviewer',
+  'Attempt id',
 ];
 
 const iso = (ms: number | null): string => (ms === null ? '' : new Date(ms).toISOString());
@@ -89,10 +89,16 @@ export function buildRow(attempt: AttemptExport): (string | number)[] {
   // Three weakest competencies that the paper actually touched. The full list
   // is 60 rows long and 20 questions cannot cover it, so a column naming
   // everything would invite reading absence as failure.
+  // English, like the rest of the sheet: the reviewer reads this beside the
+  // Performance Review row it came from, and that row is in English.
   const weakest = b.competencies
     .filter((c) => c.total > 0)
     .slice(0, 3)
-    .map((c) => `${c.label} (${c.correct}/${c.total})`)
+    .map((c) => {
+      const meta = COMPETENCY_BY_ID.get(c.competencyId);
+      const name = meta ? competencyLabel(meta, 'en') : c.label;
+      return `${name} (${c.correct}/${c.total})`;
+    })
     .join('; ');
 
   return [
@@ -106,12 +112,12 @@ export function buildRow(attempt: AttemptExport): (string | number)[] {
     ...TIER_ORDER.map((t) => b.tiers[t].percent),
     weakest,
     b.nextLevel ? (LEVEL_LABELS[b.nextLevel] ?? b.nextLevel) : '',
-    b.nextLevelGap ?? '',
+    b.nextLevelGap?.en ?? '',
     attempt.variantNumber,
     attempt.status,
     attempt.strikes,
     attempt.terminationReason ?? '',
-    attempt.reinstated ? 'так' : '',
+    attempt.reinstated ? 'yes' : '',
     attempt.attemptId,
   ];
 }

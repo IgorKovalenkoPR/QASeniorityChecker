@@ -1,11 +1,23 @@
 import { useState } from 'react';
 import type { Level, Tier } from '@qasc/core';
-import { TIERS } from '@qasc/core';
+import { COMPETENCY_BY_ID, TIERS, competencyLabel } from '@qasc/core';
 import type { MetaResponse, ResultResponse } from '../lib/api.js';
 import { Banner, Card, TIER_LABELS } from '../components/ui.js';
 import { sourceLabel, useI18n } from '../lib/i18n.js';
 
 /** Which tier colour a level badge takes. */
+/**
+ * The competency name for the current language.
+ *
+ * Resolved from the id rather than read out of the stored breakdown, so a
+ * result scored months ago renders in whichever language the reader picks -
+ * the stored JSON keeps only the Ukrainian label it was written with.
+ */
+function competencyName(id: string, storedLabel: string, locale: 'en' | 'uk'): string {
+  const meta = COMPETENCY_BY_ID.get(id);
+  return meta ? competencyLabel(meta, locale) : storedLabel;
+}
+
 function tierOfLevel(level: Level): Tier {
   if (level.startsWith('trainee')) return 'trainee';
   if (level.startsWith('junior')) return 'junior';
@@ -22,7 +34,7 @@ export function ResultScreen({
   meta: MetaResponse | null;
   onRestart: () => void;
 }) {
-  const { t, text } = useI18n();
+  const { t, text, locale } = useI18n();
   const [showReview, setShowReview] = useState(false);
   const { breakdown } = result;
   const label = meta?.levelLabels[breakdown.level] ?? breakdown.level;
@@ -42,11 +54,11 @@ export function ResultScreen({
               {t('result.correct', { correct: breakdown.correct, total: breakdown.total })}
             </h1>
             <p className="muted" style={{ marginTop: 'var(--sp-3)' }}>
-              {breakdown.rationale}
+              {text(breakdown.rationale)}
             </p>
             {breakdown.nextLevelGap ? (
               <Banner tone="info" title={t('result.nextTitle')}>
-                {breakdown.nextLevelGap}
+                {text(breakdown.nextLevelGap)}
               </Banner>
             ) : (
               <Banner tone="info">
@@ -145,7 +157,7 @@ export function ResultScreen({
               <tbody>
                 {weakest.map((c) => (
                   <tr key={c.competencyId}>
-                    <td>{c.label}</td>
+                    <td>{competencyName(c.competencyId, c.label, locale)}</td>
                     <td>
                       <span className={`badge badge--${c.tier}`}>{TIER_LABELS[c.tier]}</span>
                     </td>

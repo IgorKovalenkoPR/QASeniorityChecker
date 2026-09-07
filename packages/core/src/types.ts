@@ -156,7 +156,7 @@ export interface CompetencyScore {
 export interface ScoreBreakdown {
   level: Level;
   /** The rule text that awarded this level, for the report. */
-  rationale: string;
+  rationale: LocalizedText;
   tiers: Record<Tier, TierScore>;
   competencies: CompetencyScore[];
   correct: number;
@@ -164,5 +164,5 @@ export interface ScoreBreakdown {
   percent: number;
   /** Rungs the candidate missed and what it would take to reach the next one. */
   nextLevel: Level | null;
-  nextLevelGap: string | null;
+  nextLevelGap: LocalizedText | null;
 }
