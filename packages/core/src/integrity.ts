@@ -121,9 +121,11 @@ export interface IntegrityPolicy {
  *   - shorter server-observed silences: see `heartbeatTerminateMs`,
  *   - fullscreen exit: nothing requests fullscreen, so nothing emits this.
  *
- * A sub-`graceMs` interruption is free because it is not an act: a Teams
- * popup, a password manager and an incoming call all steal focus for under a
- * second whatever the candidate does.
+ * A sub-`graceMs` FOCUS LOSS is free because it is not an act: a Teams popup,
+ * a password manager and an incoming call all steal focus for under a second
+ * whatever the candidate does, and the page stays on screen throughout. Hiding
+ * the page - another tab, another application, minimising - has no grace at
+ * all, because there is no way to do it by accident.
  */
 export const DEFAULT_INTEGRITY_POLICY: IntegrityPolicy = {
   terminateAtStrikes: 2,
@@ -186,7 +188,16 @@ export function strikeCost(event: IntegrityEvent, policy: IntegrityPolicy): numb
 
   const base = policy.weights[event.type] ?? 0;
   if (base === 0) return 0;
-  if (isAbsence && duration < policy.graceMs) return 0;
+
+  // The grace window covers a focus STEAL, and only that. A notification, a
+  // password manager or an incoming call takes the focus while the page stays
+  // on screen - that is `window_blur`, the candidate did nothing, and it is
+  // free. Hiding the document is a different act: you cannot accidentally
+  // switch tab, switch application or minimise, and nothing involuntary hides
+  // a page for under two seconds and then gives it back. Applying the same
+  // grace to both meant a quick click away and back registered as nothing at
+  // all, which is what the owner saw when they tried it.
+  if (event.type === 'window_blur' && duration < policy.graceMs) return 0;
   return base;
 }
 

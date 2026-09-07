@@ -17,12 +17,47 @@ const absence = (offset: number): IntegrityEvent => ({
 });
 
 describe('integrity policy', () => {
-  it('forgives a blink-length blur', () => {
+  it('forgives a blink-length loss of focus', () => {
     // A notification stealing focus for half a second must not fail an honest
-    // candidate - this is the single most important false-positive guard.
+    // candidate - this is the single most important false-positive guard. It is
+    // a `window_blur`: the page never left the screen.
     const event: IntegrityEvent = { type: 'window_blur', occurredAt: at(0), durationMs: 500 };
     expect(strikeCost(event, DEFAULT_INTEGRITY_POLICY)).toBe(0);
     expect(evaluateIntegrity([event]).terminate).toBe(false);
+  });
+
+  it('charges a tab switch however brief it was', () => {
+    // The grace window used to apply to both kinds of absence, so a quick click
+    // away and back cost nothing - the owner tried exactly that, saw the warning
+    // banner appear and the remaining count not move, and reasonably concluded
+    // the detector was not working.
+    //
+    // The distinction: a notification takes the focus while the page stays on
+    // screen, and the candidate did not do it. Hiding the page - another tab,
+    // another application, minimising - cannot happen by accident, and nothing
+    // involuntary hides a page for 300ms and then hands it back.
+    const blink: IntegrityEvent = {
+      type: 'visibility_hidden',
+      occurredAt: at(0),
+      durationMs: 300,
+    };
+    expect(strikeCost(blink, DEFAULT_INTEGRITY_POLICY)).toBe(1);
+
+    const verdict = evaluateIntegrity([blink]);
+    expect(verdict.strikes).toBe(1);
+    expect(verdict.terminate).toBe(false);
+    expect(verdict.remaining).toBe(1);
+  });
+
+  it('ends the attempt on two quick glances away', () => {
+    // What the owner asked for in as many words: the first is a warning, the
+    // second ends it. Both well inside the old grace window.
+    const verdict = evaluateIntegrity([
+      { type: 'visibility_hidden', occurredAt: at(0), durationMs: 400 },
+      { type: 'visibility_hidden', occurredAt: at(20_000), durationMs: 400 },
+    ]);
+    expect(verdict.terminate).toBe(true);
+    expect(verdict.reason?.uk).toContain('приховано');
   });
 
   it('warns on the first absence and ends the attempt on the second', () => {
