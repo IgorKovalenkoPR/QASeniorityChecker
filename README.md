@@ -305,9 +305,9 @@ project, and it is refused in production.
 The candidate's result deliberately does **not** carry the answer key
 (`QASC_REVEAL_ANSWERS_TO_CANDIDATE` is `false` by default). They see their rung, the per-tier and
 per-competency breakdown, and which of the twenty questions counted - not the correct answers or
-the explanations. The reason is arithmetic: a variant is 20 questions out of 504 and the variant
-counter round-robins, so a reviewer-grade result screen shown to everyone is a slow, complete
-export of the bank to anyone holding the link.
+the explanations. The reason is arithmetic: a paper is 20 questions out of 504, and a new attempt draws a paper the
+candidate has not had yet - so a reviewer-grade result screen shown to everyone is a slow but
+complete export of the bank to anyone holding the link.
 
 The reviewer's view lives behind `QASC_ADMIN_TOKEN`:
 

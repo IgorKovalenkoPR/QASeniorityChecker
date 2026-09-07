@@ -141,6 +141,11 @@ reconstruct what someone was asked.
 fails if the file changes. Editing the bank changes that file — that is
 expected and correct; the invariant is determinism, not immutability.
 
+Note what this does *not* mean: the sequence a candidate sees is **not** the row
+order in `variants.md`. The paper's contents are fixed per variant; the order
+they are asked in is shuffled per attempt (§6). The invariant is about which
+twenty questions paper 17 contains, not about which one comes first.
+
 ### 3.3 Every paper has the same shape
 
 4 Trainee / 6 Junior / 6 Middle / 4 Senior, no repeats inside one paper.
@@ -294,6 +299,48 @@ reached, the four tier percentages behind it, and what the next rung needs.
 Papers are generated at import time from the seed, not per attempt. An attempt
 stores only its `variant_number`.
 
+### 6.1 Which paper a candidate is given
+
+Not round-robin, and this is the one place where the hosting shaped the design.
+Assignment used to be `COUNT(*) % 50 + 1`, which is perfectly even **while the
+database survives**. On the current plan it does not: the container is destroyed
+on every deploy *and* on every idle spin-down (§14), so the count restarted at
+zero and the next candidate was handed paper 1 again. Three testers in a row got
+the identical twenty questions — the sharing risk the fifty papers exist to
+prevent, arriving through the mechanism meant to prevent it.
+
+So the choice is random at heart, and the database is consulted only to improve
+it when it happens to hold history, never to make it work at all:
+
+1. never a paper this candidate has already had, so a second attempt cannot be a
+   second run at the same questions — the restart note promises this;
+2. never one of the last ten issued to anyone, so two people starting together
+   do not compare notes;
+3. if those rules leave nothing to pick from, they are dropped in that order.
+
+`Math.random` is the right tool: knowing which paper you hold is worth nothing,
+because the option ids and both orders are per-attempt.
+
+### 6.2 What is shuffled, and per what
+
+| | Fixed by | Varies per |
+| --- | --- | --- |
+| Which 20 questions | the seed, per variant | — |
+| Question order | — | attempt |
+| Option order | — | attempt |
+| Option ids | — | attempt |
+
+Question order is seeded from the attempt id rather than randomised per call,
+because `buildPaper` runs again on every resume: a paper that reshuffled itself
+after a reload would be a different test, and the candidate would have to find
+their place again. The same reasoning applies to option order.
+
+Between them these mean nothing transfers between two candidates who draw the
+same paper — not "the first one is about CDNs", not a screenshot of a numbered
+list, not "question 3 is option c".
+
+### 6.3 Option ids
+
 What reaches the browser is narrow on purpose: an id, a position, the question
 text and its options in both languages, and whether more than one option is
 correct. Nothing else — see §3.1 for why it is built field by field and §8.3 for
@@ -413,6 +460,16 @@ game, and they are what make the rung explainable. `ResultQuestion` reads them
 from the bank when the result is built, so it never depended on the paper
 payload.
 
+**One more piece of criteria left the result with the ladder table.**
+`ScoreBreakdown` used to carry a `rationale` — the sheet's own wording for the
+rung that was awarded, printed under the score: *"every skill item at the
+current level (green) scores at least 25 points, and every Trainee item (grey)
+50"*. It is the sheet's thresholds, its colour coding and its certification
+expectations, in a sentence a candidate can do nothing with except work out what
+to aim at. It was also the last of the criteria on screen after §5.3 removed the
+table. The rule text still lives in `LEVEL_RULES`, where the reviewer reads it;
+it is no longer part of a result.
+
 **And not the paper number.** `Paper 17` used to sit in the header and next to
 the progress counter. It discloses a lower bound on how many papers exist and
 lets two candidates establish that they got the same one, and nothing on the
@@ -524,6 +581,16 @@ candidate and by a reconnecting VPN.
 prints, and highlighting a question is what reading looks like. Under the old
 weights a stray keypress was worth a quarter of an attempt; under a budget of
 two it would have been half.
+
+**The grace window covers a focus steal, not a tab switch.** `graceMs` applies
+to `window_blur` only. A notification, a password manager or an incoming call
+takes the focus while the page stays on screen, the candidate did nothing, and
+it is free. Hiding the document is a different act: there is no way to switch
+tab, switch application or minimise by accident, and nothing involuntary hides a
+page for under two seconds and then hands it back. Applying one grace window to
+both meant a quick click away and back registered as **nothing at all** — the
+warning banner appeared, the remaining count did not move, and the tool looked
+broken to the person testing it. That is how this was found.
 
 **A second tab costs one interruption, not two.** It used to be double-weighted,
 which at a budget of two would have made the first detection final — and the
@@ -657,8 +724,8 @@ Contracts worth knowing:
 - The candidate's result carries the answer key only when
   `QASC_REVEAL_ANSWERS_TO_CANDIDATE` is on, and it is off by default. With it
   on, anyone holding the link could start an attempt, submit it untouched, read
-  twenty correct answers and start again — the paper counter round-robins, so
-  each pass returns a fresh paper. `answersRevealed` on the response says which
+  twenty correct answers and start again — a new attempt never repeats a paper
+  the same candidate has had (§6.1), so each pass returns a fresh one. `answersRevealed` on the response says which
   mode produced it.
 - `authorizeAttempt` expires an overdue attempt *inside* the authorisation step,
   so no route can forget to check the clock.
@@ -769,9 +836,18 @@ that surface.
 | File | Covers |
 | --- | --- |
 | `packages/core/test/scoring.test.ts` | tier folding, the ladder's three properties over every achievable score, gap text in both languages |
-| `packages/core/test/integrity.test.ts` | the strike policy, including the reload and silence cases as named regressions, and the invariant that a zero-weight event can never end an attempt |
+| `packages/core/test/integrity.test.ts` | the strike policy, including the reload and silence cases as named regressions, that a brief tab switch still costs a strike while a brief focus steal does not, and the invariant that a zero-weight event can never end an attempt |
 | `packages/content/test/bank.test.ts` | bank structure, quota, paper spread, translation completeness |
-| `apps/api/test/api.test.ts` | the candidate lifecycle end to end over a real Fastify and in-memory SQLite, the answer-key gating, the integrity paths, the reviewer endpoints, reinstatement, malformed requests |
+| `apps/api/test/api.test.ts` | the candidate lifecycle end to end over a real Fastify and in-memory SQLite, the answer-key gating, paper freshness (an emptied database must not hand out paper 1 again, and a candidate never repeats a paper), per-attempt question order, the integrity paths, the reviewer endpoints, reinstatement, malformed requests |
+
+One note on the answer-key guard, because it is the most important assertion in
+the suite and it was quietly weak. It checked that the payload did not *contain*
+the word `explanation`, which passed only because assignment was deterministic
+and paper 1 happens not to use the word. Randomising the paper broke it
+immediately: one question reads *"The most likely explanation is:"*, which is
+candidate-visible prose and entirely correct. It now checks JSON **keys** and
+the parsed structure. A guard that fires on the bank's own wording gets silenced
+sooner or later, and this is not the one to lose.
 | `apps/api/test/auth.test.ts` | who is admitted, the OAuth flow with an injected exchange, the state check, the config guards |
 | `apps/api/test/sheets.test.ts` | the row shape, the outbox state machine, queue-before-credentials |
 | `apps/api/test/migrate.test.ts` | opening a database written by an older build |

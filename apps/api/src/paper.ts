@@ -96,9 +96,23 @@ export function variantQuestions(variantNumber: number): Question[] {
   });
 }
 
-/** Builds the candidate-facing paper: opaque option ids, shuffled option order. */
+/**
+ * Builds the candidate-facing paper: shuffled question order, opaque option ids,
+ * shuffled option order.
+ *
+ * The question ORDER is per attempt, not per variant. Two candidates who draw
+ * the same paper therefore still see a different sequence, so "the first
+ * question is about CDNs" transfers to nobody - and neither does a screenshot
+ * of a numbered list. It is seeded from the attempt id rather than randomised
+ * per call, because this function runs again on every resume and a paper that
+ * reshuffled itself after a reload would be a different test.
+ *
+ * The variant itself is untouched: `VARIANTS` is generated from the fixed seed
+ * and `docs/variants.md` still regenerates byte for byte.
+ */
 export function buildPaper(attemptId: string, variantNumber: number): PaperQuestion[] {
-  return variantQuestions(variantNumber).map((q, index) => {
+  const ordered = shuffle(variantQuestions(variantNumber), createRng(`${attemptId}:order`));
+  return ordered.map((q, index) => {
     const order = shuffle(q.options, createRng(`${attemptId}:${q.id}`));
     return {
       id: q.id,

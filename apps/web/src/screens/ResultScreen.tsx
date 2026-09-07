@@ -53,9 +53,6 @@ export function ResultScreen({
             <h1>
               {t('result.correct', { correct: breakdown.correct, total: breakdown.total })}
             </h1>
-            <p className="muted" style={{ marginTop: 'var(--sp-3)' }}>
-              {text(breakdown.rationale)}
-            </p>
             {breakdown.nextLevelGap ? (
               <Banner tone="info" title={t('result.nextTitle')}>
                 {text(breakdown.nextLevelGap)}

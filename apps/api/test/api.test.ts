@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { QUESTION_BY_ID, VARIANT_BY_NUMBER } from '@qasc/content';
 import type { Db } from '../src/db.js';
 import { buildTestApp } from '../src/server.js';
+import { buildPaper } from '../src/paper.js';
 
 let app: FastifyInstance;
 let db: Db;
@@ -80,12 +81,91 @@ describe('starting an attempt', () => {
   });
 });
 
+describe('which paper a candidate gets', () => {
+  it('does not hand out paper 1 every time the database is empty', async () => {
+    // The regression, and it was live in production. Assignment was round-robin
+    // over COUNT(*), which is only even while the database survives - and on the
+    // current hosting it does not: the container is destroyed on every deploy
+    // and on every idle spin-down. So the count restarted at zero and the next
+    // candidate got paper 1. Three testers in a row got the identical paper.
+    //
+    // `DELETE FROM attempts` is that wipe, exactly.
+    const first: number[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      db.exec('DELETE FROM attempts');
+      const started = await startAttempt(`Tester ${i}`, `t${i}@example.com`);
+      first.push(variantOf(db, started.attempt.id));
+    }
+    // One in 50^9 of failing by chance if the choice really is spread.
+    expect(new Set(first).size).toBeGreaterThan(1);
+  });
+
+  it('never gives the same candidate a paper twice', async () => {
+    // The restart note promises a different paper, and a second run at the same
+    // twenty questions is the cheapest way to prepare for this test.
+    const seen = new Set<number>();
+    for (let i = 0; i < 5; i += 1) {
+      const started = await startAttempt('Anna Tester', 'anna@example.com');
+      seen.add(variantOf(db, started.attempt.id));
+    }
+    expect(seen.size).toBe(5);
+  });
+
+  it('keeps consecutive candidates apart', async () => {
+    const variants = [];
+    for (let i = 0; i < 6; i += 1) {
+      const started = await startAttempt(`Peer ${i}`, `peer${i}@example.com`);
+      variants.push(variantOf(db, started.attempt.id));
+    }
+    expect(new Set(variants).size).toBe(variants.length);
+  });
+
+  it('orders the questions per attempt, not per paper', async () => {
+    // Two candidates who draw the same paper must not see the same sequence, or
+    // "the first one is about CDNs" transfers between them - and so does a
+    // screenshot of a numbered list.
+    const a = buildPaper('attempt-a', 7).map((q) => q.id);
+    const b = buildPaper('attempt-b', 7).map((q) => q.id);
+    expect(a).not.toEqual(b);
+    expect([...a].sort()).toEqual([...b].sort());
+  });
+
+  it('gives the same attempt the same order every time it is built', async () => {
+    // This function runs again on every resume. A paper that reshuffled itself
+    // after a reload would be a different test, and the candidate would have to
+    // find where they were.
+    expect(buildPaper('attempt-a', 7).map((q) => q.id)).toEqual(
+      buildPaper('attempt-a', 7).map((q) => q.id),
+    );
+  });
+});
+
 describe('answer key containment', () => {
   it('never sends the answer key or the explanation with the paper', async () => {
+    // Checked as JSON KEYS, not as substrings.
+    //
+    // This test used to assert the payload did not contain the word
+    // "explanation" anywhere, and it passed only because paper assignment was
+    // deterministic and paper 1 happens not to use the word. It started failing
+    // the moment papers were chosen at random: one question in the bank reads
+    // "The most likely explanation is:", which is candidate-visible prose and
+    // entirely correct. A guard that fires on the bank's own wording would have
+    // been silenced sooner or later, and the thing it protects is the most
+    // important invariant in the repository.
     const started = await startAttempt();
     const raw = JSON.stringify(started);
-    expect(raw).not.toContain('correctOptionIds');
-    expect(raw).not.toContain('explanation');
+    for (const key of ['correctOptionIds', 'explanation', 'correctAnswer']) {
+      expect(raw, key).not.toContain(`"${key}":`);
+    }
+    // And structurally, question by question, so a rename cannot slip past.
+    for (const question of started.questions) {
+      expect(question).not.toHaveProperty('explanation');
+      expect(question).not.toHaveProperty('correctAnswer');
+      expect(question).not.toHaveProperty('correctOptionIds');
+      for (const option of question.options as { id: string }[]) {
+        expect(Object.keys(option).sort()).toEqual(['id', 'text']);
+      }
+    }
   });
 
   it('never labels a question with its tier, competency or syllabus', async () => {
@@ -268,9 +348,15 @@ describe('taking the test', () => {
     });
     expect(result.json().answersRevealed).toBe(false);
     // Checked against the raw payload, not the parsed object: the guarantee is
-    // about what crosses the wire.
-    expect(result.payload).not.toContain('correctAnswer');
-    expect(result.payload).not.toContain('explanation');
+    // about what crosses the wire. As JSON keys, though - see the note above on
+    // why the substring form was a false-positive waiting for a random paper.
+    for (const key of ['correctAnswer', 'explanation', 'correctOptionIds']) {
+      expect(result.payload, key).not.toContain(`"${key}":`);
+    }
+    for (const question of result.json().questions) {
+      expect(question).not.toHaveProperty('correctAnswer');
+      expect(question).not.toHaveProperty('explanation');
+    }
   });
 
   it('restores saved answers on resume', async () => {

@@ -161,12 +161,16 @@ const S = {
     uk: 'Вихід зі сторінки тесту може завершити спробу.',
   },
   'start.rules.bannerBody': {
-    en: 'Switching to another tab, window or application is recorded and reported to the server. An interruption shorter than {grace} seconds costs nothing at all. The first longer one is a warning, and the attempt ends after {strikes} of them. One absence of more than {hard} seconds ends the attempt on its own, whatever the count.',
+    // Says plainly that leaving has no grace period, because it no longer does:
+    // the free window covers a focus steal while the page stays on screen, and
+    // a candidate who clicks away and back quickly used to see a warning and
+    // then no change to the count, which reads as a tool that does not work.
+    en: 'Switching to another tab, window or application is recorded and reported to the server, however briefly you are gone. The first one is a warning; the attempt ends after {strikes} of them. What is free is a short loss of focus while this page stays on screen - a notification, a password manager - and only under {grace} seconds. One absence of more than {hard} seconds ends the attempt on its own, whatever the count.',
     // A declinable noun can never follow a placeholder here: `{grace} секунд` is
     // wrong at 2 and `{strikes}-му` is wrong at 1. The invariant `с` and the
     // colon-before-the-numeral keep the sentence correct at any value the
     // server sends.
-    uk: 'Перехід на іншу вкладку, в інше вікно або в інший застосунок фіксується і передається на сервер. Коротке переривання (до {grace} с) не коштує нічого. Перше довше — це попередження; кількість таких переривань, після якої спроба завершується: {strikes}. Окрема відсутність понад {hard} с завершує спробу одразу, незалежно від їх кількості.',
+    uk: 'Перехід на іншу вкладку, в інше вікно або в інший застосунок фіксується і передається на сервер, яким би коротким він не був. Перший такий перехід — попередження; кількість переривань, після якої спроба завершується: {strikes}. Безкоштовна лише коротка втрата фокуса, коли сторінка лишається на екрані (сповіщення, менеджер паролів), і лише до {grace} с. Окрема відсутність понад {hard} с завершує спробу одразу, незалежно від їх кількості.',
   },
   'start.rules.foreground': {
     en: 'Keep this window in the foreground until you finish.',

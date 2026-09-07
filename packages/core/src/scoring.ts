@@ -81,7 +81,6 @@ export function scoreAttempt(questions: readonly Question[], answers: AnswerShee
 
   return {
     level: rule.level,
-    rationale: rule.rationale,
     tiers,
     competencies,
     correct,

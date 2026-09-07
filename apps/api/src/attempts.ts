@@ -50,10 +50,65 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
-/** Variant assignment. Round-robin over the 50 papers keeps usage even. */
-function nextVariantNumber(db: Db): number {
-  const row = db.prepare('SELECT COUNT(*) AS n FROM attempts').get() as { n: number };
-  return (row.n % VARIANT_COUNT) + 1;
+/**
+ * How many recently issued papers to steer away from.
+ *
+ * Ten rather than all fifty: the point is that people sitting down near each
+ * other get different papers, not that the rotation is perfect.
+ */
+const RECENT_PAPERS_TO_AVOID = 10;
+
+/**
+ * Variant assignment.
+ *
+ * This was round-robin over `COUNT(*)`, which is only even while the database
+ * survives. On the current hosting it does not: the free plan destroys the
+ * container on every deploy AND on every idle spin-down, so the count restarted
+ * at zero and the next candidate got paper 1 again. Three testers in a row were
+ * handed the identical paper - which is precisely the sharing risk the fifty
+ * papers exist to prevent, arriving through the mechanism meant to prevent it.
+ *
+ * So the choice is random at heart, and the database is used only to make it
+ * better when it happens to hold history, never to make it work at all:
+ *
+ *   - never a paper this candidate has already been given, so a second attempt
+ *     cannot be a second run at the same questions;
+ *   - never one of the last `RECENT_PAPERS_TO_AVOID` issued to anyone, so two
+ *     people starting together do not get the same twenty questions;
+ *   - and when those two rules leave nothing to pick from, they are dropped in
+ *     that order rather than failing.
+ *
+ * `Math.random` is right here: nothing about this needs to be unguessable.
+ * Knowing which paper you have is worth nothing on its own, because the option
+ * ids and the option order are per-attempt (see paper.ts).
+ */
+function nextVariantNumber(db: Db, candidateEmail: string): number {
+  const all = Array.from({ length: VARIANT_COUNT }, (_, i) => i + 1);
+
+  const mine = new Set(
+    (
+      db
+        .prepare('SELECT DISTINCT variant_number AS n FROM attempts WHERE candidate_email = ?')
+        .all(candidateEmail) as { n: number }[]
+    ).map((row) => row.n),
+  );
+  const recent = new Set(
+    (
+      db
+        .prepare('SELECT variant_number AS n FROM attempts ORDER BY created_at DESC LIMIT ?')
+        .all(RECENT_PAPERS_TO_AVOID) as { n: number }[]
+    ).map((row) => row.n),
+  );
+
+  const pick = (pool: number[]): number | null =>
+    pool.length === 0 ? null : (pool[Math.floor(Math.random() * pool.length)] as number);
+
+  return (
+    pick(all.filter((n) => !mine.has(n) && !recent.has(n))) ??
+    pick(all.filter((n) => !mine.has(n))) ??
+    pick(all) ??
+    1
+  );
 }
 
 export interface StartedAttempt {
@@ -68,7 +123,7 @@ export function startAttempt(
   const now = Date.now();
   const id = randomUUID();
   const token = randomBytes(32).toString('base64url');
-  const variantNumber = nextVariantNumber(db);
+  const variantNumber = nextVariantNumber(db, input.candidateEmail);
   const deadline = now + config.attemptDurationSec * 1000;
 
   db.prepare(

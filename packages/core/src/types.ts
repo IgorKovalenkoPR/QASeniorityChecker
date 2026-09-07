@@ -171,8 +171,18 @@ export interface CompetencyScore {
 
 export interface ScoreBreakdown {
   level: Level;
-  /** The rule text that awarded this level, for the report. */
-  rationale: LocalizedText;
+  /**
+   * No `rationale`.
+   *
+   * The rung's rule used to be copied in here and printed under the result:
+   * "every skill item at the current level (green) scores at least 25 points,
+   * and every Trainee item (grey) 50". That is the Performance Review sheet's
+   * own wording - thresholds, its colour coding, its certification
+   * expectations - and a candidate can do nothing with it except work out what
+   * to aim at next time. It is also the last of the criteria left on screen
+   * after the ladder table went. The rule text still lives in `LEVEL_RULES`,
+   * which is where the reviewer reads it; it is simply not part of a result.
+   */
   tiers: Record<Tier, TierScore>;
   competencies: CompetencyScore[];
   correct: number;
