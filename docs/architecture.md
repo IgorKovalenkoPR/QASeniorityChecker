@@ -262,6 +262,16 @@ result and into the spreadsheet row. Because the award is the rung below the
 first failure, the rung above it *is* the real obstacle — so the candidate is
 told what stopped them rather than what some higher row happens to want.
 
+That one gap is the **only** threshold the candidate sees. The result screen
+used to end with a card headed *Where this level sits* that printed all nine
+rungs with their exact thresholds, and `/api/meta` served the same table
+alongside the sheet's own wording for each rung — to anyone who could reach the
+URL, with no session. Both are gone. The table was the company's Performance
+Review criteria published as a by-product of scoring one attempt, and it doubled
+as a map for the next one: the thresholds say precisely which tier is worth a
+candidate's effort. What is kept is what a candidate can act on — the rung they
+reached, the four tier percentages behind it, and what the next rung needs.
+
 ---
 
 ## 6. Paper generation and option ids
@@ -393,6 +403,18 @@ The one thing still on screen that describes the paper is the variant number
 candidates establish that they got the same one. It is left in place because
 nobody has asked for it to go and it is a support handle, but it is the same
 class of disclosure as the two badges above.
+
+**And not through an endpoint either.** `/api/meta` and `/api/health` both
+answer without a session, so whatever they return is public. Between them they
+used to serve the bank broken down by tier and by syllabus, the number of
+papers, and every rung's threshold with the sheet's wording — the whole of what
+§8.3 says the screens must not disclose, one `curl` away. Removing something
+from a screen while an unauthenticated endpoint still returns it is a cosmetic
+change, so the endpoints were trimmed to what the screens actually render:
+`/api/meta` keeps the duration, the question count, the integrity thresholds,
+the auth mode and the rung *names*; `/api/health` reports **that** the bank
+loaded rather than how big it is. The reviewer's bank statistics moved nowhere —
+they were always on the admin endpoint, behind `QASC_ADMIN_TOKEN`.
 
 ---
 
@@ -585,8 +607,8 @@ Candidate endpoints authenticate with the attempt token (`Authorization:
 Bearer`); reviewer endpoints with `QASC_ADMIN_TOKEN`.
 
 ```
-GET    /api/health                          liveness; also reports bank size
-GET    /api/meta                            auth mode, allowed domains, policy, ladder
+GET    /api/health                          liveness; reports that the bank loaded, not its size
+GET    /api/meta                            auth mode, allowed domains, integrity policy, rung names
 
 GET    /api/auth/me                         the signed-in identity, or 401
 GET    /api/auth/google/start               302 to Google, sets the state cookie

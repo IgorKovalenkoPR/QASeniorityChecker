@@ -323,12 +323,6 @@ const S = {
     uk: 'Щабель визначається саме цими чотирма числами за порогами з таблиці Performance Review. Рівень має вагу лише тоді, коли рівні під ним міцні — тому сильний результат вище не компенсує слабкий нижче.',
   },
   'result.tierAria': { en: 'Level {tier}: {percent} percent', uk: 'Рівень {tier}: {percent} відсотків' },
-  'result.ladderTitle': { en: 'Where this level sits', uk: 'Де розташований цей рівень' },
-  'result.ladderLevel': { en: 'Level', uk: 'Рівень' },
-  'result.ladderRequires': { en: 'Requires', uk: 'Вимоги' },
-  'result.ladderYou': { en: 'You', uk: 'Ви' },
-  'result.belowTrainee': { en: 'Below the Trainee threshold', uk: 'Нижче порога Trainee' },
-  'result.yourResult': { en: 'Your result', uk: 'Ваш результат' },
   'result.compsTitle': {
     en: 'Competencies worth looking at first',
     uk: 'Компетенції, на які варто звернути увагу насамперед',
